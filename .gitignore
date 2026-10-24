@@ -47,3 +47,6 @@ venv/
 reports/bitacora/
 reports/propuesta/*.docx
 reports/propuesta/*.pdf
+
+# Project instructions & memory
+GEMINI.md

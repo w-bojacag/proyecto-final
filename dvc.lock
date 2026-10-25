@@ -1,0 +1,35 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py
+    deps:
+    - path: data/processed/matriz_caracteristicas_cartagena.csv
+      hash: md5
+      md5: b4e3feb95d0524818e634e261b6b102a
+      size: 388798
+    - path: src/models/train_xgboost.py
+      hash: md5
+      md5: 2d30ea4bb9c3ff814b120d34dcaa90c3
+      size: 5391
+    params:
+      params.yaml:
+        train:
+          n_estimators: 80
+          learning_rate: 0.03
+          max_depth: 2
+          min_child_weight: 5
+          reg_alpha: 2.0
+          reg_lambda: 1.0
+          random_state: 42
+          subsample: 0.7
+          colsample_bytree: 0.7
+          test_size: 0.2
+    outs:
+    - path: models/xgboost_model.json
+      hash: md5
+      md5: 9274fd749b39b7b6e9ab8960990822ef
+      size: 52774
+    - path: reports/metrics.json
+      hash: md5
+      md5: 96af2f073fe5fcf1731ebf6fa5431451
+      size: 150

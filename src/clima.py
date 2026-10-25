@@ -1,3 +1,5 @@
+
+# Se encarga de consultyar el API de Google Earht y consolodida en un mismo archivo
 import ee
 import pandas as pd
 
@@ -7,11 +9,11 @@ ee.Initialize(project='dengue-project-2026')
 # Polígono de Cartagena
 poligono_cartagena = ee.Geometry.Polygon([
     [
-        [-75.5800, 10.3200],  # Suroeste
-        [-75.4000, 10.3200],  # Sureste
-        [-75.4000, 10.5000],  # Noreste
-        [-75.5800, 10.5000],  # Noroeste
-        [-75.5800, 10.3200]   # Cierre del polígono
+        [-75.5800, 10.3200], 
+        [-75.4000, 10.3200],  
+        [-75.4000, 10.5000], 
+        [-75.5800, 10.5000], 
+        [-75.5800, 10.3200]   # Cierre
     ]
 ])
 

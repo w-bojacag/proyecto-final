@@ -1,0 +1,13 @@
+stages:
+  train:
+    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py
+    deps:
+      - data/processed/matriz_caracteristicas_cartagena.csv
+      - src/models/train_xgboost.py
+    params:
+      - train
+    outs:
+      - models/xgboost_model.json
+    metrics:
+      - reports/metrics.json:
+          cache: false

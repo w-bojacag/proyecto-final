@@ -1,9 +1,11 @@
 """
 Script de entrenamiento y evaluación de un modelo XGBoost para Alerta Temprana de Dengue (Cartagena).
-Objetivo: Predecir los casos de dengue de la semana actual utilizando rezagos climáticos y epidemiológicos.
+Integra carga de hiperparámetros desde params.yaml y guardado de métricas para DVC.
 """
 
 from pathlib import Path
+import json
+import yaml
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +16,19 @@ BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent.parent
 INPUT_PATH = ROOT_DIR / "data" / "processed" / "matriz_caracteristicas_cartagena.csv"
 FIG_DIR = ROOT_DIR / "reports" / "figures"
+MODELS_DIR = ROOT_DIR / "models"
+METRICS_PATH = ROOT_DIR / "reports" / "metrics.json"
+
 FIG_DIR.mkdir(parents=True, exist_ok=True)
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def load_params():
+    params_path = ROOT_DIR / "params.yaml"
+    if params_path.exists():
+        with open(params_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f).get("train", {})
+    return {}
 
 
 def entrenar_modelo_xgboost():
@@ -28,20 +42,19 @@ def entrenar_modelo_xgboost():
     df = pd.read_csv(INPUT_PATH)
     print(f"Total de registros cargados: {len(df)}")
     
-    # Definir la variable objetivo (Target) y las características (Features)
-    # Target: casos_confirmados_o_probables en la semana t
-    target = "casos_confirmados_o_probables"
+    # Cargar hiperparámetros desde params.yaml
+    params = load_params()
+    print(f"Hiperparámetros cargados: {params}")
     
-    # Excluir columnas no predictivas o fechas directas si interfieren
+    target = "casos_confirmados_o_probables"
     exclude_cols = ["ANO", "SEMANA", target]
     features = [col for col in df.columns if col not in exclude_cols]
     
     X = df[features]
     y = df[target]
     
-    # División cronológica (Train / Test)
-    # Por ejemplo, usar el 80% más antiguo para entrenamiento y el 20% más reciente para prueba
-    split_idx = int(len(df) * 0.80)
+    test_size = params.get("test_size", 0.20)
+    split_idx = int(len(df) * (1 - test_size))
     
     X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
     y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
@@ -51,31 +64,36 @@ def entrenar_modelo_xgboost():
     print(f"Tamaño conjunto de entrenamiento: {len(X_train)} semanas")
     print(f"Tamaño conjunto de prueba (Test): {len(X_test)} semanas")
     
-    # Inicializar y entrenar XGBoost Regressor con regularización
+    # Inicializar y entrenar XGBoost Regressor
     model = xgb.XGBRegressor(
-        n_estimators=80,
-        learning_rate=0.03,
-        max_depth=3,
-        min_child_weight=3,
-        reg_alpha=1.0,
-        reg_lambda=1.0,
-        random_state=42,
-        subsample=0.7,
-        colsample_bytree=0.7
+        n_estimators=params.get("n_estimators", 80),
+        learning_rate=params.get("learning_rate", 0.03),
+        max_depth=params.get("max_depth", 3),
+        min_child_weight=params.get("min_child_weight", 3),
+        reg_alpha=params.get("reg_alpha", 1.0),
+        reg_lambda=params.get("reg_lambda", 1.0),
+        random_state=params.get("random_state", 42),
+        subsample=params.get("subsample", 0.7),
+        colsample_bytree=params.get("colsample_bytree", 0.7)
     )
     
     model.fit(X_train, y_train)
+    
+    # Guardar modelo entrenado
+    model_path = MODELS_DIR / "xgboost_model.json"
+    model.save_model(model_path)
+    print(f"Modelo guardado en: {model_path}")
     
     # Predicciones
     y_pred_train = model.predict(X_train)
     y_pred_test = model.predict(X_test)
     
-    # Evaluar métricas en Train y Test
-    rmse_train = np.sqrt(mean_squared_error(y_train, y_pred_train))
-    mae_train = mean_absolute_error(y_train, y_pred_train)
+    # Métricas
+    rmse_train = float(np.sqrt(mean_squared_error(y_train, y_pred_train)))
+    mae_train = float(mean_absolute_error(y_train, y_pred_train))
     
-    rmse_test = np.sqrt(mean_squared_error(y_test, y_pred_test))
-    mae_test = mean_absolute_error(y_test, y_pred_test)
+    rmse_test = float(np.sqrt(mean_squared_error(y_test, y_pred_test)))
+    mae_test = float(mean_absolute_error(y_test, y_pred_test))
     
     print("\n" + "-" * 50)
     print("DIAGNÓSTICO DE SOBREAJUSTE: COMPARACIÓN TRAIN VS TEST")
@@ -83,19 +101,25 @@ def entrenar_modelo_xgboost():
     print(f"Entrenamiento -> RMSE: {rmse_train:.2f}  |  MAE: {mae_train:.2f}")
     print(f"Prueba (Test)   -> RMSE: {rmse_test:.2f}  |  MAE: {mae_test:.2f}")
     
-    if rmse_train < (rmse_test * 0.6):
-        print("\n[ALERTA] Posible sobreajuste detectado: El error en entrenamiento es significativamente menor que en prueba.")
-    else:
-        print("\n[OK] Generalización adecuada: Los errores entre entrenamiento y prueba son comparables, sin evidencia severa de sobreajuste.")
+    # Guardar métricas en JSON para DVC
+    metrics = {
+        "rmse_train": rmse_train,
+        "mae_train": mae_train,
+        "rmse_test": rmse_test,
+        "mae_test": mae_test
+    }
+    with open(METRICS_PATH, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=4)
+    print(f"Métricas guardadas en: {METRICS_PATH}")
     
-    # Importancia de características (Feature Importance)
+    # Importancia de características
     importances = pd.Series(model.feature_importances_, index=features).sort_values(ascending=False)
     print("\n" + "-" * 40)
     print("TOP 10 CARACTERÍSTICAS MÁS IMPORTANTES:")
     print("-" * 40)
     print(importances.head(10))
     
-    # Graficar resultados (Real vs Predicho en Test)
+    # Gráfico
     df_test["prediccion"] = y_pred_test
     
     plt.figure(figsize=(12, 6))
@@ -104,14 +128,14 @@ def entrenar_modelo_xgboost():
     plt.xticks(rotation=45, ticks=range(0, len(df_test), max(1, len(df_test)//12)))
     plt.title("XGBoost: Casos Reales vs Predichos de Dengue (Cartagena - Test Set)")
     plt.xlabel("Año y Semana Epidemiológica")
-    plt.ylabel("Número de Casos")
+    plt.ylabel("Número de casos")
     plt.legend()
     plt.grid(True, linestyle=":", alpha=0.6)
     plt.tight_layout()
     
     fig_path = FIG_DIR / "xgboost_predicciones_cartagena.png"
     plt.savefig(fig_path, dpi=300)
-    print(f"\nGráfico guardado exitosamente en: {fig_path}")
+    print(f"\nGráfico guardado en: {fig_path}")
     plt.close()
     
     return model, rmse_test, mae_test

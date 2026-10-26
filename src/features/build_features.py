@@ -27,7 +27,19 @@ def construir_caracteristicas():
     
     # Asegurar orden cronológico estricto
     df = df.sort_values(["ANO", "SEMANA"]).reset_index(drop=True)
-    
+
+    # Imputar vacíos ambientales (p. ej. MODIS LST sin dato por nubosidad) con interpolación
+    # lineal entre semanas vecinas, en lugar de eliminar semanas: un dropna() global borraba
+    # ~270 semanas dispersas y rompía la continuidad de la serie.
+    cols_ambientales = [
+        "precipitation_mm", "lst_day_c", "lst_night_c", "air_temp_max_c",
+        "air_temp_mean_c", "air_temp_min_c", "dewpoint_c", "evi", "ndvi"
+    ]
+    cols_ambientales = [col for col in cols_ambientales if col in df.columns]
+    print("Vacíos ambientales antes de imputar:")
+    print(df[cols_ambientales].isna().sum()[lambda s: s > 0].to_string())
+    df[cols_ambientales] = df[cols_ambientales].interpolate(method="linear", limit_direction="both")
+
     # Variables a las que les aplicaremos rezagos (lags) y medias móviles
     # - Clima: precipitación, temperatura media, humedad/punto de rocío
     # - Epidemiología: casos confirmados o probables
@@ -52,8 +64,10 @@ def construir_caracteristicas():
         if col in df.columns:
             df[f"{col}_roll_mean_4"] = df[col].shift(1).rolling(window=4).mean()
             
-    # Eliminar filas con valores NaN generados por los rezagos iniciales (primeras semanas)
-    df_modelado = df.dropna().reset_index(drop=True)
+    # Eliminar solo las primeras semanas sin historia suficiente para los rezagos
+    df_modelado = df.iloc[max(lags):].reset_index(drop=True)
+    if df_modelado.isna().any().any():
+        raise ValueError("Quedan valores vacíos en la matriz de características")
     
     print(f"Dimensiones antes de eliminar NaNs por rezagos: {df.shape}")
     print(f"Dimensiones de la matriz final de características: {df_modelado.shape}")

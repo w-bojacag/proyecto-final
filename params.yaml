@@ -8,4 +8,7 @@ train:
   random_state: 42
   subsample: 0.7
   colsample_bytree: 0.7
-  test_size: 0.20
+  # Partición cronológica por años epidemiológicos (inclusive):
+  # entrenamiento <= train_end_year < validación <= val_end_year < prueba
+  train_end_year: 2019
+  val_end_year: 2022

@@ -5,12 +5,12 @@ stages:
     deps:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: b4e3feb95d0524818e634e261b6b102a
-      size: 388798
+      md5: 9cc287d5d62ce84611dd7ba83d9d0bea
+      size: 532067
     - path: src/models/train_xgboost.py
       hash: md5
-      md5: 2d30ea4bb9c3ff814b120d34dcaa90c3
-      size: 5391
+      md5: 6b97155fc393b0d3f4902dc6a0959b6b
+      size: 6680
     params:
       params.yaml:
         train:
@@ -23,13 +23,14 @@ stages:
           random_state: 42
           subsample: 0.7
           colsample_bytree: 0.7
-          test_size: 0.2
+          train_end_year: 2019
+          val_end_year: 2022
     outs:
     - path: models/xgboost_model.json
       hash: md5
-      md5: 9274fd749b39b7b6e9ab8960990822ef
-      size: 52774
+      md5: 66aecb2162e476712a6ceae54a14f6c7
+      size: 59100
     - path: reports/metrics.json
       hash: md5
-      md5: 96af2f073fe5fcf1731ebf6fa5431451
-      size: 150
+      md5: 22a460cccf9b5c48457b3669cc3dca79
+      size: 223

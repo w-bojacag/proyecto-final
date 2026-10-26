@@ -27,24 +27,38 @@ def _parse_fecha(serie):
     return pd.to_datetime(solo_fecha, format="%d/%m/%Y", errors="coerce")
 
 
+def semana_epidemiologica(fechas):
+    """
+    Año y semana epidemiológica (INS/SIVIGILA, criterio MMWR) de una serie de fechas.
+    La semana va de domingo a sábado y la semana 1 es la primera con al menos 4 días
+    en enero; equivale a asignar cada semana al año en que cae su miércoles.
+    (No usar isocalendar(): la semana ISO va de lunes a domingo y en años como 2009
+    y 2015 queda desplazada una semana completa respecto a la epidemiológica.)
+    """
+    dias_desde_domingo = (fechas.dt.dayofweek + 1) % 7
+    miercoles = fechas - pd.to_timedelta(dias_desde_domingo, unit="D") + pd.Timedelta(days=3)
+    anio = miercoles.dt.year
+    semana = (miercoles.dt.dayofyear - 1) // 7 + 1
+    return anio, semana
+
+
 def cargar_y_procesar_ambiental():
     print("=" * 70)
     print("1. CARGANDO Y PROCESANDO MATRIZ AMBIENTAL DIARIA")
     print("=" * 70)
     df_env = pd.read_csv(AMBIENTAL_PATH)
     df_env["date"] = pd.to_datetime(df_env["date"], errors="coerce")
-    
-    # Extraer año y semana ISO para alinear con SIVIGILA
-    iso_cal = df_env["date"].dt.isocalendar()
-    df_env["ANO"] = iso_cal.year
-    df_env["SEMANA"] = iso_cal.week
-    
-    # Manejo especial para semanas ISO 53 en transición de año o año bisiesto si fuera necesario
+
+    # Año y semana epidemiológica (domingo a sábado), igual que la SEMANA de SIVIGILA
+    df_env["ANO"], df_env["SEMANA"] = semana_epidemiologica(df_env["date"])
+
     # Agregación semanal:
-    # - precipitation_mm: suma total acumulada en la semana
+    # - precipitation_mm: acumulado semanal = promedio diario x 7. En semanas completas es
+    #   igual a la suma; en las semanas de borde (2007-S1 empieza el 31/12/2006 y 2025-S53
+    #   termina el 03/01/2026, fuera de la descarga) evita subestimar la lluvia.
     # - variables de temperatura y vegetación: promedio semanal
     agregaciones = {
-        "precipitation_mm": "sum",
+        "precipitation_mm": "mean",
         "lst_day_c": "mean",
         "lst_night_c": "mean",
         "air_temp_max_c": "mean",
@@ -56,6 +70,7 @@ def cargar_y_procesar_ambiental():
     }
     
     df_env_semanal = df_env.groupby(["ANO", "SEMANA"]).agg(agregaciones).reset_index()
+    df_env_semanal["precipitation_mm"] = df_env_semanal["precipitation_mm"] * 7
     print(f"Registros ambientales diarios: {len(df_env)}")
     print(f"Registros ambientales semanales agregados: {len(df_env_semanal)}")
     return df_env_semanal

@@ -47,22 +47,37 @@ def entrenar_modelo_xgboost():
     print(f"Hiperparámetros cargados: {params}")
     
     target = "casos_confirmados_o_probables"
-    exclude_cols = ["ANO", "SEMANA", target]
+    # Los conteos de casos de la misma semana (casos_totales, casos_confirmados, ...) contienen
+    # el objetivo y no se conocen al momento de predecir: solo se usan sus rezagos y medias móviles.
+    casos_semana_actual = [col for col in df.columns if col.startswith("casos_") and "_lag_" not in col and "_roll_" not in col]
+    exclude_cols = ["ANO", "SEMANA"] + casos_semana_actual
     features = [col for col in df.columns if col not in exclude_cols]
+    print(f"Variables excluidas (fuga del objetivo): {casos_semana_actual}")
     
     X = df[features]
     y = df[target]
     
-    test_size = params.get("test_size", 0.20)
-    split_idx = int(len(df) * (1 - test_size))
-    
-    X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
-    y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
-    
-    df_test = df.iloc[split_idx:].copy()
-    
-    print(f"Tamaño conjunto de entrenamiento: {len(X_train)} semanas")
-    print(f"Tamaño conjunto de prueba (Test): {len(X_test)} semanas")
+    # Partición cronológica por años: los hiperparámetros se ajustan con validación;
+    # prueba se reserva para la evaluación final.
+    train_end_year = params.get("train_end_year", 2019)
+    val_end_year = params.get("val_end_year", 2022)
+    mask_train = df["ANO"] <= train_end_year
+    mask_val = (df["ANO"] > train_end_year) & (df["ANO"] <= val_end_year)
+    mask_test = df["ANO"] > val_end_year
+
+    X_train, y_train = X[mask_train], y[mask_train]
+    X_val, y_val = X[mask_val], y[mask_val]
+    X_test, y_test = X[mask_test], y[mask_test]
+
+    df_test = df[mask_test].copy()
+
+    def rango(mask):
+        d = df[mask]
+        return f"{int(d['ANO'].iloc[0])}-S{int(d['SEMANA'].iloc[0])} a {int(d['ANO'].iloc[-1])}-S{int(d['SEMANA'].iloc[-1])}"
+
+    print(f"Entrenamiento: {len(X_train)} semanas ({rango(mask_train)})")
+    print(f"Validación:    {len(X_val)} semanas ({rango(mask_val)})")
+    print(f"Prueba (Test): {len(X_test)} semanas ({rango(mask_test)})")
     
     # Inicializar y entrenar XGBoost Regressor
     model = xgb.XGBRegressor(
@@ -86,25 +101,32 @@ def entrenar_modelo_xgboost():
     
     # Predicciones
     y_pred_train = model.predict(X_train)
+    y_pred_val = model.predict(X_val)
     y_pred_test = model.predict(X_test)
-    
+
     # Métricas
     rmse_train = float(np.sqrt(mean_squared_error(y_train, y_pred_train)))
     mae_train = float(mean_absolute_error(y_train, y_pred_train))
-    
+
+    rmse_val = float(np.sqrt(mean_squared_error(y_val, y_pred_val)))
+    mae_val = float(mean_absolute_error(y_val, y_pred_val))
+
     rmse_test = float(np.sqrt(mean_squared_error(y_test, y_pred_test)))
     mae_test = float(mean_absolute_error(y_test, y_pred_test))
-    
+
     print("\n" + "-" * 50)
-    print("DIAGNÓSTICO DE SOBREAJUSTE: COMPARACIÓN TRAIN VS TEST")
+    print("DIAGNÓSTICO DE SOBREAJUSTE: TRAIN VS VALIDACIÓN VS TEST")
     print("-" * 50)
     print(f"Entrenamiento -> RMSE: {rmse_train:.2f}  |  MAE: {mae_train:.2f}")
-    print(f"Prueba (Test)   -> RMSE: {rmse_test:.2f}  |  MAE: {mae_test:.2f}")
-    
+    print(f"Validación    -> RMSE: {rmse_val:.2f}  |  MAE: {mae_val:.2f}")
+    print(f"Prueba (Test) -> RMSE: {rmse_test:.2f}  |  MAE: {mae_test:.2f}")
+
     # Guardar métricas en JSON para DVC
     metrics = {
         "rmse_train": rmse_train,
         "mae_train": mae_train,
+        "rmse_val": rmse_val,
+        "mae_val": mae_val,
         "rmse_test": rmse_test,
         "mae_test": mae_test
     }

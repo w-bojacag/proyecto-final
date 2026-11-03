@@ -1,33 +1,38 @@
 
 # Se encarga de consultyar el API de Google Earht y consolodida en un mismo archivo
+import json
+from pathlib import Path
+
 import ee
 import pandas as pd
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
 
 # 1. Inicializar Earth Engine con tu proyecto personal
 ee.Initialize(project='dengue-project-2026')
 
-# Polígono de Cartagena
-poligono_cartagena = ee.Geometry.Polygon([
-    [
-        [-75.5800, 10.3200], 
-        [-75.4000, 10.3200],  
-        [-75.4000, 10.5000], 
-        [-75.5800, 10.5000], 
-        [-75.5800, 10.3200]   # Cierre
-    ]
-])
+# Polígono de Cartagena: cabecera urbana (clase 1) del Marco Geoestadístico Nacional del DANE
+# (MGN 2021, MPIO_CDPMP 13001), simplificado a 91 vértices. Reemplaza el rectángulo anterior,
+# que dejaba fuera el sur de la ciudad y tenía la mitad del área sobre el mar.
+with open(ROOT_DIR / 'data' / 'external' / 'cartagena_cabecera_urbana_mgn2021.geojson', encoding='utf-8') as f:
+    poligono_cartagena = ee.Geometry.Polygon(json.load(f)['geometry']['coordinates'])
+
+# CHIRPS (~5,5 km) y ERA5-Land (~11 km) tienen píxeles grandes frente a la ciudad: se muestrean
+# a 1 km para que el promedio pondere cada píxel por el área que comparte con el polígono
+# (a escala nativa solo cuentan los píxeles cuyo centro cae dentro y el valor puede quedar vacío).
+ESCALA_GRUESA = 1000
 
 def extraer_chirps(year):
     """1. Precipitación Diaria (CHIRPS)"""
-    col = ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY').filterDate(f"{year}-01-01", f"{year}-12-31").select('precipitation')
+    col = ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY').filterDate(f"{year}-01-01", f"{year + 1}-01-01").select('precipitation')
     def map_func(img):
-        val = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=5000).get('precipitation')
+        val = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=ESCALA_GRUESA).get('precipitation')
         return ee.Feature(None, {'date': img.date().format('YYYY-MM-dd'), 'precipitation_mm': val})
     return pd.DataFrame([f['properties'] for f in col.map(map_func).getInfo()['features']])
 
 def extraer_modis_lst(year):
     """2. Temperatura Superficial Día y Noche (MODIS LST - Diaria)"""
-    col = ee.ImageCollection('MODIS/061/MOD11A1').filterDate(f"{year}-01-01", f"{year}-12-31").select(['LST_Day_1km', 'LST_Night_1km'])
+    col = ee.ImageCollection('MODIS/061/MOD11A1').filterDate(f"{year}-01-01", f"{year + 1}-01-01").select(['LST_Day_1km', 'LST_Night_1km'])
     def map_func(img):
         day = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=1000).get('LST_Day_1km')
         night = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=1000).get('LST_Night_1km')
@@ -39,14 +44,14 @@ def extraer_modis_lst(year):
 
 def extraer_era5_clima(year):
     """3. Temperatura de Aire (Media, Min, Max) y Punto de Rocío (ERA5-Land - Diaria)"""
-    col = ee.ImageCollection('ECMWF/ERA5_LAND/DAILY_AGGR').filterDate(f"{year}-01-01", f"{year}-12-31").select([
+    col = ee.ImageCollection('ECMWF/ERA5_LAND/DAILY_AGGR').filterDate(f"{year}-01-01", f"{year + 1}-01-01").select([
         'temperature_2m', 'temperature_2m_min', 'temperature_2m_max', 'dewpoint_temperature_2m'
     ])
     def map_func(img):
-        t_mean = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=11132).get('temperature_2m')
-        t_min = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=11132).get('temperature_2m_min')
-        t_max = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=11132).get('temperature_2m_max')
-        dew = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=11132).get('dewpoint_temperature_2m')
+        t_mean = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=ESCALA_GRUESA).get('temperature_2m')
+        t_min = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=ESCALA_GRUESA).get('temperature_2m_min')
+        t_max = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=ESCALA_GRUESA).get('temperature_2m_max')
+        dew = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=ESCALA_GRUESA).get('dewpoint_temperature_2m')
         
         return ee.Feature(None, {
             'date': img.date().format('YYYY-MM-dd'),
@@ -59,7 +64,7 @@ def extraer_era5_clima(year):
 
 def extraer_modis_vegetacion(year):
     """4. Índices de Vegetación NDVI y EVI (MODIS - 16 días)"""
-    col = ee.ImageCollection('MODIS/061/MOD13Q1').filterDate(f"{year}-01-01", f"{year}-12-31").select(['NDVI', 'EVI'])
+    col = ee.ImageCollection('MODIS/061/MOD13Q1').filterDate(f"{year}-01-01", f"{year + 1}-01-01").select(['NDVI', 'EVI'])
     def map_func(img):
         ndvi = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=250).get('NDVI')
         evi = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=poligono_cartagena, scale=250).get('EVI')
@@ -96,7 +101,7 @@ for df in [df_chirps, df_lst, df_era5, df_veg]:
     df.set_index('date', inplace=True)
 
 # --- FUSIÓN MAESTRO EN PANDAS ---
-# Unimos primero las fuentes diarias usando una base de fechas completa (2007-2005)
+# Unimos primero las fuentes diarias usando una base de fechas completa (2007-2025)
 rango_fechas = pd.date_range(start='2007-01-01', end='2025-12-31', freq='D')
 df_maestro = pd.DataFrame(index=rango_fechas)
 df_maestro.index.name = 'date'
@@ -109,7 +114,7 @@ df_veg = df_veg[~df_veg.index.duplicated(keep='first')] # Limpiar posibles dupli
 df_maestro = df_maestro.join(df_veg.reindex(df_maestro.index).ffill())
 
 # Guardar la matriz final consolidada
-ruta_salida = 'c:/Wilson/IA/Dengue/analisis/matriz_maestra_ambiental_cartagena_2007_2025.csv'
+ruta_salida = ROOT_DIR / 'data' / 'processed' / 'matriz_maestra_ambiental_cartagena_2007_2025.csv'
 df_maestro.to_csv(ruta_salida)
 
 print(f"\n¡Proceso finalizado con éxito!")

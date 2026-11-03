@@ -5,8 +5,8 @@ stages:
     deps:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: 9cc287d5d62ce84611dd7ba83d9d0bea
-      size: 532067
+      md5: 607a45ca3a34a744effe73faa073fd06
+      size: 530595
     - path: src/models/train_xgboost.py
       hash: md5
       md5: 6b97155fc393b0d3f4902dc6a0959b6b
@@ -28,9 +28,9 @@ stages:
     outs:
     - path: models/xgboost_model.json
       hash: md5
-      md5: 66aecb2162e476712a6ceae54a14f6c7
-      size: 59100
+      md5: a6ad950348f861bd44b53e3d3c3187bc
+      size: 59047
     - path: reports/metrics.json
       hash: md5
-      md5: 22a460cccf9b5c48457b3669cc3dca79
-      size: 223
+      md5: 67a53058d517e005189e11a85009d0fd
+      size: 222

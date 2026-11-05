@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import xgboost as xgb
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent.parent
@@ -30,6 +31,26 @@ def load_params():
             return yaml.safe_load(f).get("train", {})
     return {}
 
+def crear_target_brote_t4(df, col_casos="casos_confirmados_o_probables", horizonte=4):
+    # Asegurar orden cronológico
+    df = df.sort_values(["ANO", "SEMANA"]).reset_index(drop=True)
+    
+    # 1. Calcular el Percentil 75 histórico por cada semana epidemiológica (1-52)
+    # Usamos los datos históricos para calcular el umbral normal de cada época del año
+    umbrales_semanales = df.groupby("SEMANA")[col_casos].quantile(0.75).to_dict()
+    df["umbral_brote"] = df["SEMANA"].map(umbrales_semanales)
+    
+    # 2. Definir si la semana real supera el umbral (Brote = 1, Normal = 0)
+    df["es_brote_actual"] = (df[col_casos] > df["umbral_brote"]).astype(int)
+    
+    # 3. Desplazar el objetivo 4 semanas hacia el FUTURO (t + 4)
+    # Esto significa: en la fila actual (semana t), ¿habrá brote en t + 4?
+    df["target_brote_t4"] = df["es_brote_actual"].shift(-horizonte)
+    
+    # Eliminar las últimas 4 filas que quedarán con NaN por el shift hacia adelante
+    df = df.dropna(subset=["target_brote_t4"]).reset_index(drop=True)
+    
+    return df
 
 def entrenar_modelo_xgboost():
     print("=" * 70)
@@ -45,12 +66,16 @@ def entrenar_modelo_xgboost():
     # Cargar hiperparámetros desde params.yaml
     params = load_params()
     print(f"Hiperparámetros cargados: {params}")
+   
+    # Cálculo del Target de Brote Y_t+4
+    df = crear_target_brote_t4(df)
+    print(f"se aplica cambio de Target en df")
     
-    target = "casos_confirmados_o_probables"
+    target = "target_brote_t4"
     # Los conteos de casos de la misma semana (casos_totales, casos_confirmados, ...) contienen
     # el objetivo y no se conocen al momento de predecir: solo se usan sus rezagos y medias móviles.
     casos_semana_actual = [col for col in df.columns if col.startswith("casos_") and "_lag_" not in col and "_roll_" not in col]
-    exclude_cols = ["ANO", "SEMANA"] + casos_semana_actual
+    exclude_cols = ["ANO", "SEMANA", "umbral_brote", "es_brote_actual", "target_brote_t4"] + casos_semana_actual
     features = [col for col in df.columns if col not in exclude_cols]
     print(f"Variables excluidas (fuga del objetivo): {casos_semana_actual}")
     
@@ -80,7 +105,7 @@ def entrenar_modelo_xgboost():
     print(f"Prueba (Test): {len(X_test)} semanas ({rango(mask_test)})")
     
     # Inicializar y entrenar XGBoost Regressor
-    model = xgb.XGBRegressor(
+    model = xgb.XGBClassifier(
         n_estimators=params.get("n_estimators", 80),
         learning_rate=params.get("learning_rate", 0.03),
         max_depth=params.get("max_depth", 3),
@@ -89,7 +114,8 @@ def entrenar_modelo_xgboost():
         reg_lambda=params.get("reg_lambda", 1.0),
         random_state=params.get("random_state", 42),
         subsample=params.get("subsample", 0.7),
-        colsample_bytree=params.get("colsample_bytree", 0.7)
+        colsample_bytree=params.get("colsample_bytree", 0.7),
+        objective="binary:logistic"
     )
     
     model.fit(X_train, y_train)
@@ -100,35 +126,42 @@ def entrenar_modelo_xgboost():
     print(f"Modelo guardado en: {model_path}")
     
     # Predicciones
-    y_pred_train = model.predict(X_train)
-    y_pred_val = model.predict(X_val)
-    y_pred_test = model.predict(X_test)
+    #y_pred_train = model.predict(X_train)
+    #y_pred_val = model.predict(X_val)
+    #y_pred_test = model.predict(X_test)
+
+    # Predicciones de probabilidad
+    y_pred_train = model.predict_proba(X_train)[:, 1]
+    y_pred_val = model.predict_proba(X_val)[:, 1]
+    y_pred_test = model.predict_proba(X_test)[:, 1]
 
     # Métricas
-    rmse_train = float(np.sqrt(mean_squared_error(y_train, y_pred_train)))
-    mae_train = float(mean_absolute_error(y_train, y_pred_train))
+    #rmse_train = float(np.sqrt(mean_squared_error(y_train, y_pred_train)))
+    #mae_train = float(mean_absolute_error(y_train, y_pred_train))
 
-    rmse_val = float(np.sqrt(mean_squared_error(y_val, y_pred_val)))
-    mae_val = float(mean_absolute_error(y_val, y_pred_val))
+    #rmse_val = float(np.sqrt(mean_squared_error(y_val, y_pred_val)))
+    #mae_val = float(mean_absolute_error(y_val, y_pred_val))
 
-    rmse_test = float(np.sqrt(mean_squared_error(y_test, y_pred_test)))
-    mae_test = float(mean_absolute_error(y_test, y_pred_test))
+    #rmse_test = float(np.sqrt(mean_squared_error(y_test, y_pred_test)))
+    #mae_test = float(mean_absolute_error(y_test, y_pred_test))
+
+    # Métrica de rendimiento principal para alertas tempranas
+    roc_train = float(roc_auc_score(y_train, y_pred_train))
+    roc_val = float(roc_auc_score(y_val, y_pred_val))
+    roc_test = float(roc_auc_score(y_test, y_pred_test))
 
     print("\n" + "-" * 50)
-    print("DIAGNÓSTICO DE SOBREAJUSTE: TRAIN VS VALIDACIÓN VS TEST")
+    print("DIAGNÓSTICO DE CLASIFICACIÓN (ALERTA DE BROTE T+4):")
     print("-" * 50)
-    print(f"Entrenamiento -> RMSE: {rmse_train:.2f}  |  MAE: {mae_train:.2f}")
-    print(f"Validación    -> RMSE: {rmse_val:.2f}  |  MAE: {mae_val:.2f}")
-    print(f"Prueba (Test) -> RMSE: {rmse_test:.2f}  |  MAE: {mae_test:.2f}")
+    print(f"Entrenamiento -> ROC-AUC: {roc_train:.4f}")
+    print(f"Validación    -> ROC-AUC: {roc_val:.4f}")
+    print(f"Prueba (Test) -> ROC-AUC: {roc_test:.4f}")
 
     # Guardar métricas en JSON para DVC
     metrics = {
-        "rmse_train": rmse_train,
-        "mae_train": mae_train,
-        "rmse_val": rmse_val,
-        "mae_val": mae_val,
-        "rmse_test": rmse_test,
-        "mae_test": mae_test
+        "roc_auc_train": roc_train,
+        "roc_auc_val": roc_val,
+        "roc_auc_test": roc_test
     }
     with open(METRICS_PATH, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
@@ -160,8 +193,8 @@ def entrenar_modelo_xgboost():
     print(f"\nGráfico guardado en: {fig_path}")
     plt.close()
     
-    return model, rmse_test, mae_test
+    return model, roc_test
 
 
 if __name__ == "__main__":
-    entrenar_modelo_xgboost()
+    modelo, roc_test_score = entrenar_modelo_xgboost()

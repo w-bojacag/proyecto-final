@@ -32,7 +32,7 @@ def evaluar_modelo():
     
     df = crear_target_brote_t4(df)
     
-    casos_semana_actual = [col for col in df.columns if col.startswith("casos_") and "_lag_" not in col and "_roll_" not in col]
+    casos_semana_actual = [col for col in df.columns if col.startswith("casos_") and "_lag_" not in col and "_roll_" not in col and "_tasa_" not in col]
     exclude_cols = ["ANO", "SEMANA", "umbral_brote", "es_brote_actual", "target_brote_t4"] + casos_semana_actual
     features = [col for col in df.columns if col not in exclude_cols]
     

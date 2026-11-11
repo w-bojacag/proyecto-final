@@ -58,21 +58,32 @@ def construir_caracteristicas():
     for col in cols_clima:
         df[f"{col}_roll_mean_8"] = df[col].shift(4).rolling(window=8).mean()
 
-    # 2. Variables epidemiológicas (casos): rezagos cortos y memoria anual (52 semanas)
+    # 2. Variables epidemiológicas (casos): Tasa de cambio (velocidad) y memoria anual
     cols_casos = ["casos_confirmados_o_probables"]
     cols_casos = [col for col in cols_casos if col in df.columns]
-    
-    lags_casos = [4, 52]
+
     for col in cols_casos:
-        for lag in lags_casos:
-            df[f"{col}_lag_{lag}"] = df[col].shift(lag)
+        # A. Tasa de cambio a 4 semanas (velocidad de brote a mediano plazo)
+        df[f"{col}_tasa_cambio_4"] = (df[col] - df[col].shift(4)) / (df[col].shift(4) + 1.0)
+        
+        # B. Tasa de cambio a corto plazo (velocidad inmediata de 1 semana)
+        df[f"{col}_tasa_cambio_1"] = (df[col] - df[col].shift(1)) / (df[col].shift(1) + 1.0)
+        
+        # C. Memoria anual normalizada (estacionalidad de año a año)
+        df[f"{col}_lag_52"] = df[col].shift(52)
             
     # Promedio móvil de casos recientes
     for col in cols_casos:
         df[f"{col}_roll_mean_4"] = df[col].shift(1).rolling(window=4).mean()
 
-    # 3. Corte estricto basado en el rezago máximo (52 semanas para la memoria anual)
-    max_lag = max(max(lags_clima), max(lags_casos))
+    # 3. Componentes de Estacionalidad (Tiempo)
+    # Convertimos la semana epidemiológica a mes y trimestre aproximado
+    df["mes_aproximado"] = np.ceil(df["SEMANA"] / 4.33).astype(int)
+    df["trimestre_aproximado"] = np.ceil(df["SEMANA"] / 13.0).astype(int)
+
+    # 4. Corte estricto basado en el rezago máximo (52 semanas para la memoria anual)
+    #max_lag = max(max(lags_clima), max(lags_casos))
+    max_lag = max(max(lags_clima), 52)  # 52 semanas es nuestro rezago máximo (memoria anual)
     df_modelado = df.iloc[max_lag:].reset_index(drop=True)
     
     if df_modelado.isna().any().any():

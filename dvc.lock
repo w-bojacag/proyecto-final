@@ -5,12 +5,12 @@ stages:
     deps:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: e3ed431f6ff2614d59317bea288372e6
-      size: 552575
+      md5: 00ef3d45b10d639ba1d043d3f1b29e77
+      size: 556627
     - path: src/models/train_xgboost.py
       hash: md5
-      md5: 8ba1e68c35bff8a6b9758f04ded147e1
-      size: 9241
+      md5: cb2142d26511a7ebeb1e8813406e4c31
+      size: 9265
     params:
       params.yaml:
         train:
@@ -28,16 +28,16 @@ stages:
     outs:
     - path: models/xgboost_model.json
       hash: md5
-      md5: de02229394ccb274445e1edc1ba136a1
-      size: 55063
+      md5: 7e8c59a52ae00933aaffc59633ef7396
+      size: 55263
     - path: reports/figures/xgboost_predicciones_cartagena.png
       hash: md5
-      md5: 2d5d21cfce9274c19a80c6877cac5433
-      size: 315253
+      md5: 10240a242840f990bd8f35c1c00d7cc0
+      size: 317082
     - path: reports/metrics.json
       hash: md5
-      md5: 9cbf33285d00538971f8e331902e28cd
-      size: 125
+      md5: da8bc79c815457ced39eca493ec8832f
+      size: 126
   clima:
     cmd: .venv\Scripts\python.exe src/clima.py
     deps:
@@ -83,30 +83,30 @@ stages:
       size: 186997
     - path: src/features/build_features.py
       hash: md5
-      md5: 0ca38e816a6f99b8696725e4cf945332
-      size: 4283
+      md5: 5b86e59ccb6d44b95727714fb756f5a4
+      size: 4552
     outs:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: e3ed431f6ff2614d59317bea288372e6
-      size: 552575
+      md5: 00ef3d45b10d639ba1d043d3f1b29e77
+      size: 556627
   evaluate:
     cmd: .venv\Scripts\python.exe src/models/evaluate_model.py
     deps:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: e3ed431f6ff2614d59317bea288372e6
-      size: 552575
+      md5: 00ef3d45b10d639ba1d043d3f1b29e77
+      size: 556627
     - path: models/xgboost_model.json
       hash: md5
-      md5: de02229394ccb274445e1edc1ba136a1
-      size: 55063
+      md5: 7e8c59a52ae00933aaffc59633ef7396
+      size: 55263
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: 92954fd9372b391709c8d9996c1dc48f
-      size: 4171
+      md5: ee357ccb80b20d9da62ddbc3c54cbd0d
+      size: 4195
     outs:
     - path: reports/eval_metrics.json
       hash: md5
-      md5: 8f544e37c2bca79e18763fd62366402d
-      size: 245
+      md5: 2eb0be19c9c7c4d9d66ae4df44454334
+      size: 246

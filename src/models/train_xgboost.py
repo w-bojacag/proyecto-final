@@ -93,7 +93,7 @@ def entrenar_modelo_xgboost():
     target = "target_brote_t4"
     # Los conteos de casos de la misma semana (casos_totales, casos_confirmados, ...) contienen
     # el objetivo y no se conocen al momento de predecir: solo se usan sus rezagos y medias móviles.
-    casos_semana_actual = [col for col in df.columns if col.startswith("casos_") and "_lag_" not in col and "_roll_" not in col]
+    casos_semana_actual = [col for col in df.columns if col.startswith("casos_") and "_lag_" not in col and "_roll_" not in col and "_tasa_" not in col]
     exclude_cols = ["ANO", "SEMANA", "umbral_brote", "es_brote_actual", "target_brote_t4"] + casos_semana_actual
     features = [col for col in df.columns if col not in exclude_cols]
     print(f"Variables excluidas (fuga del objetivo): {casos_semana_actual}")

@@ -37,13 +37,7 @@ def crear_ventanas_temporales(df, columnas_features, columna_target, window_size
     
     for i in range(len(df) - window_size - horizonte + 1):
         # La ventana de observación: desde i hasta i+window_size-1
-        ventana_X = features_array[i : i + window_size, :].copy()
-        
-        # Normalización local por ventana (Z-score por cada variable para combatir Data Shift)
-        # Se suma un epsilon (1e-8) para evitar división por cero en variables sin variación temporal
-        mean = np.mean(ventana_X, axis=0)
-        std = np.std(ventana_X, axis=0) + 1e-8
-        ventana_X = (ventana_X - mean) / std
+        ventana_X = features_array[i : i + window_size, :]
         
         # El objetivo (T+4): la posición de la última semana de la ventana + horizonte
         target_y = target_array[i + window_size + horizonte - 1]

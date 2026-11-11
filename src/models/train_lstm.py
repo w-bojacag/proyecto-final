@@ -106,10 +106,18 @@ def entrenar_modelo_lstm():
     # Asegurar que existan
     features = [f for f in features if f in df.columns]
     
-    # La normalización global (StandardScaler) se eliminó.
-    # Ahora la normalización se realiza de forma independiente por cada ventana temporal 
-    # en data_generator.py para hacer a la red inmune al Data Shift (hiperendemia).
     df[features] = df[features].interpolate(method='linear', limit_direction='both').fillna(0)
+    
+    # Normalización Híbrida:
+    # 1. Escalado global para variables climáticas
+    climatic_features = [f for f in features if f != "casos_confirmados_o_probables"]
+    scaler = StandardScaler()
+    df[climatic_features] = scaler.fit_transform(df[climatic_features])
+    
+    # 2. Transformación logarítmica (np.log1p) para los casos epidemiológicos
+    # Esto comprime la escala hiperendémica sin perder la magnitud absoluta
+    if "casos_confirmados_o_probables" in features:
+        df["casos_confirmados_o_probables"] = np.log1p(df["casos_confirmados_o_probables"])
     
     # 3. Generar Ventanas Temporales (Tensores)
     window_size = params.get("window_size", 12)

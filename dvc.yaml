@@ -46,3 +46,15 @@ stages:
     plots:
       - reports/figures/xgboost_predicciones_cartagena.png:
           cache: false
+
+  # Evaluación clínica en el conjunto de prueba (Test) con matriz de confusión
+  evaluate:
+    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py
+    deps:
+      - src/models/evaluate_model.py
+      - data/processed/matriz_caracteristicas_cartagena.csv
+      - models/xgboost_model.json
+    metrics:
+      - reports/eval_metrics.json:
+          cache: false
+

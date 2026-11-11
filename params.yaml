@@ -1,5 +1,5 @@
 train:
-  n_estimators: 80
+  n_estimators: 100
   learning_rate: 0.01
   max_depth: 1
   min_child_weight: 5
@@ -7,8 +7,10 @@ train:
   reg_lambda: 5.0
   random_state: 42
   subsample: 0.7
-  colsample_bytree: 0.7
+  colsample_bytree: 0.5
   # Partición cronológica por años epidemiológicos (inclusive):
   # entrenamiento <= train_end_year < validación <= val_end_year < prueba
   train_end_year: 2019
   val_end_year: 2022
+
+

@@ -5,21 +5,21 @@ stages:
     deps:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: 607a45ca3a34a744effe73faa073fd06
-      size: 530595
+      md5: bb2d7c79f7bc4947f5764b5e40d225af
+      size: 531522
     - path: src/models/train_xgboost.py
       hash: md5
-      md5: e18351ad83a282dda8b64b00d011ecb9
-      size: 8348
+      md5: 977b158d21dcdddff77c686574f715a4
+      size: 8568
     params:
       params.yaml:
         train:
           n_estimators: 80
-          learning_rate: 0.03
-          max_depth: 2
+          learning_rate: 0.01
+          max_depth: 1
           min_child_weight: 5
-          reg_alpha: 2.0
-          reg_lambda: 1.0
+          reg_alpha: 5.0
+          reg_lambda: 5.0
           random_state: 42
           subsample: 0.7
           colsample_bytree: 0.7
@@ -28,15 +28,15 @@ stages:
     outs:
     - path: models/xgboost_model.json
       hash: md5
-      md5: c6e503332b36ce9d32dce0833c16474b
-      size: 52072
+      md5: 67f5c7a5883ea4522b2b9d1b493a783e
+      size: 44494
     - path: reports/figures/xgboost_predicciones_cartagena.png
       hash: md5
-      md5: 3e52c5e5a13073e228b9d9365fc0a64a
-      size: 359182
+      md5: 3deb51b2117713e9362e9da3d94e9762
+      size: 289161
     - path: reports/metrics.json
       hash: md5
-      md5: 12980e0f5c42be6ff5024a15087feab7
+      md5: 4aa2b0ef25456a364f6faf8cd4c647fd
       size: 126
   clima:
     cmd: .venv\Scripts\python.exe src/clima.py
@@ -83,10 +83,10 @@ stages:
       size: 186997
     - path: src/features/build_features.py
       hash: md5
-      md5: 6a903f922183f249251d142e2f2cef01
-      size: 3552
+      md5: 5520ac5772edc6dec4cf6dfbf1bbb33b
+      size: 3822
     outs:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: 607a45ca3a34a744effe73faa073fd06
-      size: 530595
+      md5: bb2d7c79f7bc4947f5764b5e40d225af
+      size: 531522

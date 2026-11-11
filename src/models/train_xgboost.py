@@ -105,16 +105,21 @@ def entrenar_modelo_xgboost():
     print(f"Prueba (Test): {len(X_test)} semanas ({rango(mask_test)})")
     
     # Inicializar y entrenar XGBoost Regressor
+
+    # Calcular dinámicamente el peso para desbalance de clases en train
+    class_counts = y_train.value_counts()
+    scale_pos = class_counts.get(0, 1) / class_counts.get(1, 1)
     model = xgb.XGBClassifier(
         n_estimators=params.get("n_estimators", 80),
         learning_rate=params.get("learning_rate", 0.03),
-        max_depth=params.get("max_depth", 3),
-        min_child_weight=params.get("min_child_weight", 3),
-        reg_alpha=params.get("reg_alpha", 1.0),
-        reg_lambda=params.get("reg_lambda", 1.0),
+        max_depth=params.get("max_depth", 2),
+        min_child_weight=params.get("min_child_weight", 5),
+        reg_alpha=params.get("reg_alpha",2.0),
+        reg_lambda=params.get("reg_lambda", 2.0),
         random_state=params.get("random_state", 42),
         subsample=params.get("subsample", 0.7),
         colsample_bytree=params.get("colsample_bytree", 0.7),
+        scale_pos_weight=scale_pos,
         objective="binary:logistic"
     )
     

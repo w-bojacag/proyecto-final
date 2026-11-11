@@ -1,0 +1,5 @@
+outs:
+- md5: cc23e3bd3381733846bdd8d850c4f5e3
+  size: 88561
+  hash: md5
+  path: serie_semanal_top5_bolivar_todos_tip_cas.csv

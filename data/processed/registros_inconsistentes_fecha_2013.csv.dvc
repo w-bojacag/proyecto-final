@@ -1,0 +1,5 @@
+outs:
+- md5: ab0dfa692da05f8dc9f4662368300fc0
+  size: 1186215
+  hash: md5
+  path: registros_inconsistentes_fecha_2013.csv

@@ -1,0 +1,5 @@
+outs:
+- md5: 4ed41e08bbe689be38a511fa686aad89
+  size: 42318696
+  hash: md5
+  path: dengue_bolivar_unificado.csv

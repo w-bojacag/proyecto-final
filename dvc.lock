@@ -30,7 +30,63 @@ stages:
       hash: md5
       md5: c6e503332b36ce9d32dce0833c16474b
       size: 52072
+    - path: reports/figures/xgboost_predicciones_cartagena.png
+      hash: md5
+      md5: 3e52c5e5a13073e228b9d9365fc0a64a
+      size: 359182
     - path: reports/metrics.json
       hash: md5
       md5: 12980e0f5c42be6ff5024a15087feab7
       size: 126
+  clima:
+    cmd: .venv\Scripts\python.exe src/clima.py
+    deps:
+    - path: data/external/cartagena_cabecera_urbana_mgn2021.geojson
+      hash: md5
+      md5: 6f644248727a16b999e1bfd7b5c93703
+      size: 9294
+    - path: src/clima.py
+      hash: md5
+      md5: 61939e2fa1128c02e04890a96ed1121a
+      size: 6724
+    outs:
+    - path: data/processed/matriz_maestra_ambiental_cartagena_2007_2025.csv
+      hash: md5
+      md5: 00d774bd5591d92c196eab0f9f7b5240
+      size: 1059417
+  cruce:
+    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py
+    deps:
+    - path: data/processed/dengue_bolivar_unificado.csv
+      hash: md5
+      md5: 4ed41e08bbe689be38a511fa686aad89
+      size: 42318696
+    - path: data/processed/matriz_maestra_ambiental_cartagena_2007_2025.csv
+      hash: md5
+      md5: 00d774bd5591d92c196eab0f9f7b5240
+      size: 1059417
+    - path: src/cruce_ambiental_epidemiologico.py
+      hash: md5
+      md5: 1c8a844d49c51b1808fb1ac2605d70de
+      size: 6691
+    outs:
+    - path: data/processed/matriz_cruce_semanal_cartagena.csv
+      hash: md5
+      md5: e8b128952df5a4412d698728e5571aef
+      size: 186997
+  features:
+    cmd: .venv\Scripts\python.exe src/features/build_features.py
+    deps:
+    - path: data/processed/matriz_cruce_semanal_cartagena.csv
+      hash: md5
+      md5: e8b128952df5a4412d698728e5571aef
+      size: 186997
+    - path: src/features/build_features.py
+      hash: md5
+      md5: 6a903f922183f249251d142e2f2cef01
+      size: 3552
+    outs:
+    - path: data/processed/matriz_caracteristicas_cartagena.csv
+      hash: md5
+      md5: 607a45ca3a34a744effe73faa073fd06
+      size: 530595

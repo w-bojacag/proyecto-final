@@ -1,13 +1,48 @@
 stages:
+  # Extracción de clima desde Google Earth Engine. Está congelada (frozen) porque requiere
+  # credenciales de Earth Engine y tarda: `dvc repro` usa el CSV guardado en el remoto.
+  # Para volver a extraer: dvc repro --force clima  (o dvc unfreeze clima)
+  clima:
+    cmd: .venv\Scripts\python.exe src/clima.py
+    frozen: true
+    deps:
+      - src/clima.py
+      - data/external/cartagena_cabecera_urbana_mgn2021.geojson
+    outs:
+      - data/processed/matriz_maestra_ambiental_cartagena_2007_2025.csv
+
+  # Cruce semanal (semana epidemiológica INS) de casos SIVIGILA de Cartagena con el clima.
+  cruce:
+    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py
+    deps:
+      - src/cruce_ambiental_epidemiologico.py
+      - data/processed/dengue_bolivar_unificado.csv
+      - data/processed/matriz_maestra_ambiental_cartagena_2007_2025.csv
+    outs:
+      - data/processed/matriz_cruce_semanal_cartagena.csv
+
+  # Rezagos, medias móviles e interpolación de vacíos climáticos.
+  features:
+    cmd: .venv\Scripts\python.exe src/features/build_features.py
+    deps:
+      - src/features/build_features.py
+      - data/processed/matriz_cruce_semanal_cartagena.csv
+    outs:
+      - data/processed/matriz_caracteristicas_cartagena.csv
+
+  # Clasificación de brote T+4 con XGBoost.
   train:
     cmd: .venv\Scripts\python.exe src/models/train_xgboost.py
     deps:
-      - data/processed/matriz_caracteristicas_cartagena.csv
       - src/models/train_xgboost.py
+      - data/processed/matriz_caracteristicas_cartagena.csv
     params:
       - train
     outs:
       - models/xgboost_model.json
     metrics:
       - reports/metrics.json:
+          cache: false
+    plots:
+      - reports/figures/xgboost_predicciones_cartagena.png:
           cache: false

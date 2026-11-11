@@ -1,0 +1,5 @@
+outs:
+- md5: 0f3b6922d6034790c86b0d2006a17002
+  size: 53261
+  hash: md5
+  path: serie_semanal_top5_bolivar_solo_confirmados.csv

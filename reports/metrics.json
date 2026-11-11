@@ -1,5 +1,3 @@
 {
-    "roc_auc_train": 0.9279042020719357,
-    "roc_auc_val": 0.8151974288337924,
-    "roc_auc_test": 0.5359219979473144
+    "roc_auc_test_walk_forward": 0.4063462196373589
 }

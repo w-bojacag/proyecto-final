@@ -101,114 +101,107 @@ def entrenar_modelo_xgboost():
     X = df[features]
     y = df[target]
     
-    # Partición cronológica por años: los hiperparámetros se ajustan con validación;
-    # prueba se reserva para la evaluación final.
+    # ---------------------------------------------------------
+    # VALIDACIÓN WALK-FORWARD (VENTANA DESLIZANTE ANUAL)
+    # ---------------------------------------------------------
     train_end_year = params.get("train_end_year", 2019)
     val_end_year = params.get("val_end_year", 2022)
-    mask_train = df["ANO"] <= train_end_year
-    mask_val = (df["ANO"] > train_end_year) & (df["ANO"] <= val_end_year)
-    mask_test = df["ANO"] > val_end_year
-
-    X_train, y_train = X[mask_train], y[mask_train]
-    X_val, y_val = X[mask_val], y[mask_val]
-    X_test, y_test = X[mask_test], y[mask_test]
-
-    df_test = df[mask_test].copy()
-
-    def rango(mask):
-        d = df[mask]
-        return f"{int(d['ANO'].iloc[0])}-S{int(d['SEMANA'].iloc[0])} a {int(d['ANO'].iloc[-1])}-S{int(d['SEMANA'].iloc[-1])}"
-
-    print(f"Entrenamiento: {len(X_train)} semanas ({rango(mask_train)})")
-    print(f"Validación:    {len(X_val)} semanas ({rango(mask_val)})")
-    print(f"Prueba (Test): {len(X_test)} semanas ({rango(mask_test)})")
+    test_years = sorted(df[df["ANO"] > val_end_year]["ANO"].unique())
     
-    # Inicializar y entrenar XGBoost Regressor
-
-    # Calcular dinámicamente el peso para desbalance de clases en train
-    class_counts = y_train.value_counts()
-    # scale_pos = class_counts.get(0, 1) / class_counts.get(1, 1)
-    scale_pos = 1.0  # Desactivado (peso neutral) para reducir Falsos Positivos en hiperendemia
-    model = xgb.XGBClassifier(
-        n_estimators=params.get("n_estimators", 80),
-        learning_rate=params.get("learning_rate", 0.03),
-        max_depth=params.get("max_depth", 2),
-        min_child_weight=params.get("min_child_weight", 5),
-        reg_alpha=params.get("reg_alpha",2.0),
-        reg_lambda=params.get("reg_lambda", 2.0),
-        random_state=params.get("random_state", 42),
-        subsample=params.get("subsample", 0.7),
-        colsample_bytree=params.get("colsample_bytree", 0.7),
-        scale_pos_weight=scale_pos,
-        objective="binary:logistic"
-    )
+    print(f"Iniciando Walk-Forward Validation para los años: {test_years}")
     
-    model.fit(X_train, y_train)
+    all_y_test_real = []
+    all_y_test_pred = []
+    df_test_predictions = pd.DataFrame()
     
-    # Guardar modelo entrenado
+    # Calcular dinámicamente el peso para desbalance de clases (lo dejamos neutral como acordamos)
+    scale_pos = 1.0  
+    
+    # Guardaremos el último modelo entrenado
+    last_model = None
+    
+    for test_year in test_years:
+        print(f"\n--- Entrenando para predecir el año {test_year} ---")
+        # El conjunto de entrenamiento incluye TODO hasta el año anterior al de prueba actual
+        mask_train = df["ANO"] < test_year
+        mask_test_current = df["ANO"] == test_year
+        
+        X_train_wf, y_train_wf = X[mask_train], y[mask_train]
+        X_test_wf, y_test_wf = X[mask_test_current], y[mask_test_current]
+        
+        print(f"Entrenamiento: {len(X_train_wf)} semanas (Hasta {test_year-1})")
+        print(f"Prueba:        {len(X_test_wf)} semanas (Solo {test_year})")
+        
+        model = xgb.XGBClassifier(
+            n_estimators=params.get("n_estimators", 80),
+            learning_rate=params.get("learning_rate", 0.03),
+            max_depth=params.get("max_depth", 2),
+            min_child_weight=params.get("min_child_weight", 5),
+            reg_alpha=params.get("reg_alpha", 2.0),
+            reg_lambda=params.get("reg_lambda", 2.0),
+            random_state=params.get("random_state", 42),
+            subsample=params.get("subsample", 0.7),
+            colsample_bytree=params.get("colsample_bytree", 0.7),
+            scale_pos_weight=scale_pos,
+            objective="binary:logistic"
+        )
+        
+        model.fit(X_train_wf, y_train_wf)
+        last_model = model
+        
+        # Predicciones de este año
+        y_pred_proba_wf = model.predict_proba(X_test_wf)[:, 1]
+        
+        # Guardar resultados
+        all_y_test_real.extend(y_test_wf.values)
+        all_y_test_pred.extend(y_pred_proba_wf)
+        
+        # Añadir al df de predicciones para el gráfico
+        df_test_year = df[mask_test_current].copy()
+        df_test_year["prediccion"] = y_pred_proba_wf
+        df_test_predictions = pd.concat([df_test_predictions, df_test_year])
+        
+        auc_year = roc_auc_score(y_test_wf, y_pred_proba_wf)
+        print(f"ROC-AUC para {test_year}: {auc_year:.4f}")
+        
+    # Guardar el último modelo entrenado (el que ya vio hasta 2024 para predecir 2025)
     model_path = MODELS_DIR / "xgboost_model.json"
-    model.save_model(model_path)
-    print(f"Modelo guardado en: {model_path}")
+    last_model.save_model(model_path)
+    print(f"\nÚltimo modelo (Walk-Forward) guardado en: {model_path}")
     
-    # Predicciones
-    #y_pred_train = model.predict(X_train)
-    #y_pred_val = model.predict(X_val)
-    #y_pred_test = model.predict(X_test)
-
-    # Predicciones de probabilidad
-    y_pred_train = model.predict_proba(X_train)[:, 1]
-    y_pred_val = model.predict_proba(X_val)[:, 1]
-    y_pred_test = model.predict_proba(X_test)[:, 1]
-
-    # Métricas
-    #rmse_train = float(np.sqrt(mean_squared_error(y_train, y_pred_train)))
-    #mae_train = float(mean_absolute_error(y_train, y_pred_train))
-
-    #rmse_val = float(np.sqrt(mean_squared_error(y_val, y_pred_val)))
-    #mae_val = float(mean_absolute_error(y_val, y_pred_val))
-
-    #rmse_test = float(np.sqrt(mean_squared_error(y_test, y_pred_test)))
-    #mae_test = float(mean_absolute_error(y_test, y_pred_test))
-
-    # Métrica de rendimiento principal para alertas tempranas
-    roc_train = float(roc_auc_score(y_train, y_pred_train))
-    roc_val = float(roc_auc_score(y_val, y_pred_val))
-    roc_test = float(roc_auc_score(y_test, y_pred_test))
-
+    # ---------------------------------------------------------
+    # MÉTRICAS GLOBALES DEL EXPERIMENTO WALK-FORWARD
+    # ---------------------------------------------------------
+    roc_test_global = float(roc_auc_score(all_y_test_real, all_y_test_pred))
+    
     print("\n" + "-" * 50)
-    print("DIAGNÓSTICO DE CLASIFICACIÓN (ALERTA DE BROTE T+4):")
+    print("DIAGNÓSTICO DE CLASIFICACIÓN (WALK-FORWARD T+4):")
     print("-" * 50)
-    print(f"Entrenamiento -> ROC-AUC: {roc_train:.4f}")
-    print(f"Validación    -> ROC-AUC: {roc_val:.4f}")
-    print(f"Prueba (Test) -> ROC-AUC: {roc_test:.4f}")
+    print(f"Prueba Global Acumulada (Test) -> ROC-AUC: {roc_test_global:.4f}")
 
     # Guardar métricas en JSON para DVC
     metrics = {
-        "roc_auc_train": roc_train,
-        "roc_auc_val": roc_val,
-        "roc_auc_test": roc_test
+        "roc_auc_test_walk_forward": roc_test_global
     }
     with open(METRICS_PATH, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
     print(f"Métricas guardadas en: {METRICS_PATH}")
     
-    # Importancia de características
-    importances = pd.Series(model.feature_importances_, index=features).sort_values(ascending=False)
+    # Importancia de características (del último modelo)
+    importances = pd.Series(last_model.feature_importances_, index=features).sort_values(ascending=False)
     print("\n" + "-" * 40)
-    print("TOP 10 CARACTERÍSTICAS MÁS IMPORTANTES:")
+    print("TOP 10 CARACTERÍSTICAS MÁS IMPORTANTES (Último Modelo):")
     print("-" * 40)
     print(importances.head(10))
     
     # Gráfico
-    df_test["prediccion"] = y_pred_test
-    
     plt.figure(figsize=(12, 6))
-    plt.plot(df_test["ANO"].astype(str) + "-S" + df_test["SEMANA"].astype(str), df_test[target], label="Casos Reales", color="black", alpha=0.8)
-    plt.plot(df_test["ANO"].astype(str) + "-S" + df_test["SEMANA"].astype(str), df_test["prediccion"], label="Predicción XGBoost", color="red", linestyle="--", alpha=0.9)
-    plt.xticks(rotation=45, ticks=range(0, len(df_test), max(1, len(df_test)//12)))
-    plt.title("XGBoost: Casos Reales vs Predichos de Dengue (Cartagena - Test Set)")
+    plt.plot(df_test_predictions["ANO"].astype(str) + "-S" + df_test_predictions["SEMANA"].astype(str), df_test_predictions[target], label="Casos Reales", color="black", alpha=0.8)
+    plt.plot(df_test_predictions["ANO"].astype(str) + "-S" + df_test_predictions["SEMANA"].astype(str), df_test_predictions["prediccion"], label="Predicción XGBoost (Walk-Forward)", color="red", linestyle="--", alpha=0.9)
+    plt.xticks(rotation=45, ticks=range(0, len(df_test_predictions), max(1, len(df_test_predictions)//12)))
+    plt.title("XGBoost Walk-Forward: Casos Reales vs Predichos de Dengue (Cartagena - Test Set)")
     plt.xlabel("Año y Semana Epidemiológica")
-    plt.ylabel("Número de casos")
+    plt.ylabel("Probabilidad / Brote")
     plt.legend()
     plt.grid(True, linestyle=":", alpha=0.6)
     plt.tight_layout()
@@ -218,7 +211,7 @@ def entrenar_modelo_xgboost():
     print(f"\nGráfico guardado en: {fig_path}")
     plt.close()
     
-    return model, roc_test
+    return last_model, roc_test_global
 
 
 if __name__ == "__main__":

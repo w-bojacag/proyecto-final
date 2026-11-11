@@ -51,3 +51,8 @@ El modelo de clasificación binaria ("Brote" vs "Normal") requería un **umbral 
   * Las tasas de cambio irrumpieron inmediatamente en el **Top 10 de características más importantes** (posiciones 4 y 5), demostrando que XGBoost necesitaba "ver" la aceleración de los casos, no solo el volumen absoluto.
   * El **ROC-AUC en validación subió de 0.76 a 0.79**, y en **Test recuperó terreno de 0.49 a 0.57**.
   * A nivel de matriz de confusión (Youden: 0.4267), los Falsos Positivos se mantuvieron en 72, indicando que el modelo aún prioriza no dejar pasar ningún brote, pero su capacidad de ranqueo (AUC) va mejorando.
+
+## 7. Límite de la Regularización (El problema de scale_pos_weight)
+* Para intentar reducir las alarmas falsas, se aplicó una regularización extrema (L1/L2 a 20.0, learning rate 0.005, min_child_weight 15).
+* **Hallazgo:** El modelo mejoró ligeramente su capacidad de ordenamiento (Test AUC subió a 0.59), pero la Matriz de Confusión se mantuvo idéntica (72 Falsos Positivos).
+* **Diagnóstico Metodológico:** La agresiva regularización está siendo contrarrestada por el parámetro `scale_pos_weight` calculado dinámicamente en el entrenamiento. Este multiplicador fuerza matemáticamente al modelo a temerle tanto a un Falso Negativo que prefiere lanzar alertas indiscriminadas. Para la hiperendemia de Cartagena, el desbalance artificial del XGBoost es más perjudicial que útil.

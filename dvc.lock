@@ -14,29 +14,29 @@ stages:
     params:
       params.yaml:
         train:
-          n_estimators: 100
-          learning_rate: 0.01
+          n_estimators: 250
+          learning_rate: 0.005
           max_depth: 1
-          min_child_weight: 5
-          reg_alpha: 5.0
-          reg_lambda: 5.0
+          min_child_weight: 15
+          reg_alpha: 20.0
+          reg_lambda: 20.0
           random_state: 42
-          subsample: 0.7
-          colsample_bytree: 0.5
+          subsample: 0.6
+          colsample_bytree: 0.4
           train_end_year: 2019
           val_end_year: 2022
     outs:
     - path: models/xgboost_model.json
       hash: md5
-      md5: 7e8c59a52ae00933aaffc59633ef7396
-      size: 55263
+      md5: 437ae0bbd380e9fe4f640e6f0fb9b857
+      size: 134512
     - path: reports/figures/xgboost_predicciones_cartagena.png
       hash: md5
-      md5: 10240a242840f990bd8f35c1c00d7cc0
-      size: 317082
+      md5: 27e2fadd30c65d0ce8136dd03ad66963
+      size: 307571
     - path: reports/metrics.json
       hash: md5
-      md5: da8bc79c815457ced39eca493ec8832f
+      md5: e10dbcb0406efc865a0d0e23e0f03d54
       size: 126
   clima:
     cmd: .venv\Scripts\python.exe src/clima.py
@@ -99,8 +99,8 @@ stages:
       size: 556627
     - path: models/xgboost_model.json
       hash: md5
-      md5: 7e8c59a52ae00933aaffc59633ef7396
-      size: 55263
+      md5: 437ae0bbd380e9fe4f640e6f0fb9b857
+      size: 134512
     - path: src/models/evaluate_model.py
       hash: md5
       md5: ee357ccb80b20d9da62ddbc3c54cbd0d
@@ -108,5 +108,5 @@ stages:
     outs:
     - path: reports/eval_metrics.json
       hash: md5
-      md5: 2eb0be19c9c7c4d9d66ae4df44454334
+      md5: f082ea88991db1faca28b9577c289647
       size: 246

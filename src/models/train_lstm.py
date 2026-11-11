@@ -43,8 +43,8 @@ def load_params():
                 "window_size": 12,
                 "epochs": 100,
                 "batch_size": 32,
-                "lstm_units": 32,
-                "dropout_rate": 0.4,
+                "lstm_units": 16,      # Arquitectura más sencilla (16 en lugar de 32)
+                "dropout_rate": 0.5,   # Mayor agresividad apagando neuronas para evitar memorización
                 "learning_rate": 0.001,
                 "anos_ventana": 5,
                 "train_end_year": 2019,
@@ -106,9 +106,10 @@ def entrenar_modelo_lstm():
     # Asegurar que existan
     features = [f for f in features if f in df.columns]
     
-    # Normalización (CRUCIAL para Redes Neuronales)
-    scaler = StandardScaler()
-    df[features] = scaler.fit_transform(df[features].interpolate(method='linear', limit_direction='both').fillna(0))
+    # La normalización global (StandardScaler) se eliminó.
+    # Ahora la normalización se realiza de forma independiente por cada ventana temporal 
+    # en data_generator.py para hacer a la red inmune al Data Shift (hiperendemia).
+    df[features] = df[features].interpolate(method='linear', limit_direction='both').fillna(0)
     
     # 3. Generar Ventanas Temporales (Tensores)
     window_size = params.get("window_size", 12)

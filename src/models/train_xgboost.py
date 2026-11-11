@@ -127,7 +127,8 @@ def entrenar_modelo_xgboost():
 
     # Calcular dinámicamente el peso para desbalance de clases en train
     class_counts = y_train.value_counts()
-    scale_pos = class_counts.get(0, 1) / class_counts.get(1, 1)
+    # scale_pos = class_counts.get(0, 1) / class_counts.get(1, 1)
+    scale_pos = 1.0  # Desactivado (peso neutral) para reducir Falsos Positivos en hiperendemia
     model = xgb.XGBClassifier(
         n_estimators=params.get("n_estimators", 80),
         learning_rate=params.get("learning_rate", 0.03),

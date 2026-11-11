@@ -52,7 +52,9 @@ El modelo de clasificación binaria ("Brote" vs "Normal") requería un **umbral 
   * El **ROC-AUC en validación subió de 0.76 a 0.79**, y en **Test recuperó terreno de 0.49 a 0.57**.
   * A nivel de matriz de confusión (Youden: 0.4267), los Falsos Positivos se mantuvieron en 72, indicando que el modelo aún prioriza no dejar pasar ningún brote, pero su capacidad de ranqueo (AUC) va mejorando.
 
-## 7. Límite de la Regularización (El problema de scale_pos_weight)
+## 7. Límite de la Regularización y Desactivación del scale_pos_weight
 * Para intentar reducir las alarmas falsas, se aplicó una regularización extrema (L1/L2 a 20.0, learning rate 0.005, min_child_weight 15).
-* **Hallazgo:** El modelo mejoró ligeramente su capacidad de ordenamiento (Test AUC subió a 0.59), pero la Matriz de Confusión se mantuvo idéntica (72 Falsos Positivos).
-* **Diagnóstico Metodológico:** La agresiva regularización está siendo contrarrestada por el parámetro `scale_pos_weight` calculado dinámicamente en el entrenamiento. Este multiplicador fuerza matemáticamente al modelo a temerle tanto a un Falso Negativo que prefiere lanzar alertas indiscriminadas. Para la hiperendemia de Cartagena, el desbalance artificial del XGBoost es más perjudicial que útil.
+* **Diagnóstico Metodológico:** La agresiva regularización estaba siendo contrarrestada por el parámetro `scale_pos_weight` calculado dinámicamente. Este multiplicador forzaba matemáticamente al modelo a temerle tanto a un Falso Negativo que prefería lanzar alertas indiscriminadas.
+* **Solución y Hallazgo Final:** Se desactivó el sesgo artificial (`scale_pos = 1.0`). Como resultado, las probabilidades predichas se normalizaron y el **AUC en Validación alcanzó su máximo histórico (0.815)**.
+* **Problema Persistente:** En el conjunto de Prueba (2023-2025), el AUC volvió a caer (0.53) y los Falsos Positivos se mantuvieron en 74 (True Negatives = 0). Al ver la importancia de variables, el `roll_mean_4` acapara el 99% del peso. 
+* **Conclusión Definitiva sobre Cartagena:** El clima ha dejado de ser predictivo a T+4 en la actual fase de hiperendemia. El modelo XGBoost se convirtió en un "predictor ingenuo" (Naïve forecaster) que simplemente repite los casos del mes pasado, asumiendo que si la hiperendemia sigue, siempre habrá brote. Predecir a 4 semanas requerirá una nueva métrica epidemiológica que no se sature.

@@ -1,9 +1,9 @@
 {
-    "umbral_optimo": 0.4415947496891022,
-    "sensibilidad": 0.9493670886075949,
-    "precision": 0.5102040816326531,
-    "falsos_positivos": 72,
-    "verdaderos_positivos": 75,
-    "falsos_negativos": 4,
-    "verdaderos_negativos": 2
+    "umbral_optimo": 0.20281104743480682,
+    "sensibilidad": 0.9746835443037974,
+    "precision": 0.5099337748344371,
+    "falsos_positivos": 74,
+    "verdaderos_positivos": 77,
+    "falsos_negativos": 2,
+    "verdaderos_negativos": 0
 }

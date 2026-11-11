@@ -31,14 +31,32 @@ def load_params():
             return yaml.safe_load(f).get("train", {})
     return {}
 
-def crear_target_brote_t4(df, col_casos="casos_confirmados_o_probables", horizonte=4):
+def crear_target_brote_t4(df, col_casos="casos_confirmados_o_probables", horizonte=4, anos_ventana=5):
     # Asegurar orden cronológico
     df = df.sort_values(["ANO", "SEMANA"]).reset_index(drop=True)
     
-    # 1. Calcular el Percentil 75 histórico por cada semana epidemiológica (1-52)
-    # Usamos los datos históricos para calcular el umbral normal de cada época del año
-    umbrales_semanales = df.groupby("SEMANA")[col_casos].quantile(0.75).to_dict()
-    df["umbral_brote"] = df["SEMANA"].map(umbrales_semanales)
+    # 1. Calcular el umbral dinámico (Canal Endémico Móvil)
+    # Por cada semana en un año Y, el umbral es el Percentil 75 de esa misma semana
+    # en los 'anos_ventana' años previos (ej. Y-5 a Y-1).
+    umbrales = []
+    for idx, row in df.iterrows():
+        ano_actual = row["ANO"]
+        semana_actual = row["SEMANA"]
+        
+        historia = df[(df["SEMANA"] == semana_actual) & 
+                      (df["ANO"] < ano_actual) & 
+                      (df["ANO"] >= ano_actual - anos_ventana)][col_casos]
+        
+        # Si hay al menos 3 años de historia, usamos el percentil móvil.
+        # Si no (primeros años del dataset), caemos en el percentil global de esa semana.
+        if len(historia) >= 3:
+            umbral = historia.quantile(0.75)
+        else:
+            umbral = df[df["SEMANA"] == semana_actual][col_casos].quantile(0.75)
+            
+        umbrales.append(umbral)
+        
+    df["umbral_brote"] = umbrales
     
     # 2. Definir si la semana real supera el umbral (Brote = 1, Normal = 0)
     df["es_brote_actual"] = (df[col_casos] > df["umbral_brote"]).astype(int)
@@ -51,6 +69,7 @@ def crear_target_brote_t4(df, col_casos="casos_confirmados_o_probables", horizon
     df = df.dropna(subset=["target_brote_t4"]).reset_index(drop=True)
     
     return df
+
 
 def entrenar_modelo_xgboost():
     print("=" * 70)

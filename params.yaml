@@ -13,4 +13,16 @@ train:
   train_end_year: 2019
   val_end_year: 2022
 
+lstm:
+  window_size: 12
+  epochs: 100
+  batch_size: 32
+  lstm_units: 16
+  dropout_rate: 0.5
+  learning_rate: 0.001
+  anos_ventana: 5
+  train_end_year: 2019
+  val_end_year: 2022
+
+
 

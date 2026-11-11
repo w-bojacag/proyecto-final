@@ -110,3 +110,39 @@ stages:
       hash: md5
       md5: 9db821f718a3caf2c6ac9b987629eb68
       size: 247
+  train_lstm:
+    cmd: .venv\Scripts\python.exe src/models/train_lstm.py
+    deps:
+    - path: data/processed/matriz_cruce_semanal_cartagena.csv
+      hash: md5
+      md5: e8b128952df5a4412d698728e5571aef
+      size: 186997
+    - path: src/models/data_generator.py
+      hash: md5
+      md5: f5450df1af75f0a4da997ccacc62feff
+      size: 2187
+    - path: src/models/train_lstm.py
+      hash: md5
+      md5: 11cc8f9764f637dee31d046cba235cef
+      size: 7913
+    params:
+      params.yaml:
+        lstm:
+          window_size: 12
+          epochs: 100
+          batch_size: 32
+          lstm_units: 16
+          dropout_rate: 0.5
+          learning_rate: 0.001
+          anos_ventana: 5
+          train_end_year: 2019
+          val_end_year: 2022
+    outs:
+    - path: models/lstm_model.keras
+      hash: md5
+      md5: d87ea3044bf081c8aa43dae26790502a
+      size: 47414
+    - path: reports/metrics_lstm.json
+      hash: md5
+      md5: c5ea13a14d2d2a12663b979e9b9659d1
+      size: 125

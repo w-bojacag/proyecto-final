@@ -58,3 +58,19 @@ stages:
       - reports/eval_metrics.json:
           cache: false
 
+  # Entrenamiento del modelo Deep Learning (LSTM) para series temporales
+  train_lstm:
+    cmd: .venv\Scripts\python.exe src/models/train_lstm.py
+    deps:
+      - src/models/train_lstm.py
+      - src/models/data_generator.py
+      - data/processed/matriz_cruce_semanal_cartagena.csv
+    params:
+      - lstm
+    outs:
+      - models/lstm_model.keras
+    metrics:
+      - reports/metrics_lstm.json:
+          cache: false
+
+

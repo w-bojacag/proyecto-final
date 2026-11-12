@@ -1,16 +1,11 @@
-stages:
-  # Extracción de clima desde Google Earth Engine. Está congelada (frozen) porque requiere
-  # credenciales de Earth Engine y tarda: `dvc repro` usa el CSV guardado en el remoto.
-  # Para volver a extraer: dvc repro --force clima  (o dvc unfreeze clima)
-  clima:
-    cmd: .venv\Scripts\python.exe src/clima.py
-    frozen: true
-    deps:
-      - src/clima.py
-      - data/external/cartagena_cabecera_urbana_mgn2021.geojson
-    outs:
-      - data/processed/matriz_maestra_ambiental_cartagena_2007_2025.csv
+# Pipeline por municipio: cada etapa con `foreach` se repite para cada municipio de params.yaml
+# (sección `municipios`) y aparece como <etapa>@<municipio>, por ejemplo train@cartagena.
+# Los modelos de cada municipio se entrenan solo con sus datos (modelos independientes).
+#
+#   dvc repro                       todo el pipeline
+#   dvc repro evaluate@turbaco      un municipio hasta su evaluación
 
+stages:
   # Análisis exploratorio de SIVIGILA Bolívar: calidad, series del top 5 de municipios y figuras.
   eda:
     cmd: .venv\Scripts\python.exe src/eda_bolivar.py
@@ -30,105 +25,158 @@ stages:
       - reports/figures/comparacion_definicion_caso.png:
           cache: false
 
-  # Cruce semanal (semana epidemiológica INS) de casos SIVIGILA de Cartagena con el clima.
+  # Clima diario 2007-2025 de la cabecera urbana (Google Earth Engine). Congelada porque requiere
+  # credenciales de Earth Engine y tarda: `dvc repro` usa el CSV guardado en el remoto.
+  # Para volver a extraer un municipio: dvc repro --force clima@<municipio>
+  clima:
+    foreach: ${municipios}
+    do:
+      cmd: .venv\Scripts\python.exe src/clima.py --municipio ${key}
+      frozen: true
+      deps:
+        - src/clima.py
+        - data/external/${key}_cabecera_urbana_mgn2021.geojson
+      outs:
+        - data/processed/municipios/${key}/clima_diario.csv
+
+  # Cruce semanal (semana epidemiológica INS) de los casos SIVIGILA del municipio con su clima.
   cruce:
-    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py
-    deps:
-      - src/cruce_ambiental_epidemiologico.py
-      - data/processed/dengue_bolivar_unificado.csv
-      - data/processed/matriz_maestra_ambiental_cartagena_2007_2025.csv
-    outs:
-      - data/processed/matriz_cruce_semanal_cartagena.csv
+    foreach: ${municipios}
+    do:
+      cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py --municipio ${key}
+      deps:
+        - src/cruce_ambiental_epidemiologico.py
+        - src/rutas.py
+        - data/processed/dengue_bolivar_unificado.csv
+        - data/processed/municipios/${key}/clima_diario.csv
+      params:
+        - municipios.${key}
+      outs:
+        - data/processed/municipios/${key}/cruce_semanal.csv
 
   # Rezagos, medias móviles, interpolación de vacíos climáticos, canal endémico móvil,
   # etiqueta de brote a T+4 y variables relativas al umbral.
   features:
-    cmd: .venv\Scripts\python.exe src/features/build_features.py
-    deps:
-      - src/features/build_features.py
-      - data/processed/matriz_cruce_semanal_cartagena.csv
-    params:
-      - target
-    outs:
-      - data/processed/matriz_caracteristicas_cartagena.csv
+    foreach: ${municipios}
+    do:
+      cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio ${key}
+      deps:
+        - src/features/build_features.py
+        - src/rutas.py
+        - data/processed/municipios/${key}/cruce_semanal.csv
+      params:
+        - target
+      outs:
+        - data/processed/municipios/${key}/caracteristicas.csv
 
   # Clasificación de brote T+4 con XGBoost (walk-forward anual).
   train:
-    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py
-    deps:
-      - src/models/train_xgboost.py
-      - src/models/comun.py
-      - data/processed/matriz_caracteristicas_cartagena.csv
-    params:
-      - train
-      - particion
-      - target.horizonte
-    outs:
-      - models/xgboost_model.json
-      - reports/predicciones_xgboost.csv:
-          cache: false
-    metrics:
-      - reports/metrics.json:
-          cache: false
-    plots:
-      - reports/figures/xgboost_predicciones_cartagena.png:
-          cache: false
-
-  # Clasificación de brote T+4 con LSTM (mismas semanas y mismo protocolo que XGBoost).
-  train_lstm:
-    cmd: .venv\Scripts\python.exe src/models/train_lstm.py
-    deps:
-      - src/models/train_lstm.py
-      - src/models/data_generator.py
-      - src/models/comun.py
-      - data/processed/matriz_caracteristicas_cartagena.csv
-    params:
-      - lstm
-      - particion
-      - target.horizonte
-    outs:
-      - models/lstm_model.keras
-      - reports/predicciones_lstm.csv:
-          cache: false
-    metrics:
-      - reports/metrics_lstm.json:
-          cache: false
+    foreach: ${municipios}
+    do:
+      cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio ${key}
+      deps:
+        - src/models/train_xgboost.py
+        - src/models/comun.py
+        - src/rutas.py
+        - data/processed/municipios/${key}/caracteristicas.csv
+      params:
+        - train
+        - particion
+        - target.horizonte
+      outs:
+        - models/${key}/xgboost.json
+        - models/${key}/walk_forward/xgboost
+        - reports/municipios/${key}/predicciones_xgboost.csv:
+            cache: false
+      metrics:
+        - reports/municipios/${key}/metrics_xgboost.json:
+            cache: false
+      plots:
+        - reports/municipios/${key}/xgboost_predicciones.png:
+            cache: false
 
   # Regresión logística con variables relativas al umbral (modelo interpretable).
   train_logistica:
-    cmd: .venv\Scripts\python.exe src/models/train_logistica.py
-    deps:
-      - src/models/train_logistica.py
-      - src/models/comun.py
-      - data/processed/matriz_caracteristicas_cartagena.csv
-    params:
-      - logistica
-      - particion
-      - target.horizonte
-    outs:
-      - models/logistica_model.joblib
-      - reports/predicciones_logistica.csv:
-          cache: false
-    metrics:
-      - reports/metrics_logistica.json:
-          cache: false
-      - reports/logistica_coeficientes.json:
-          cache: false
+    foreach: ${municipios}
+    do:
+      cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio ${key}
+      deps:
+        - src/models/train_logistica.py
+        - src/models/comun.py
+        - src/rutas.py
+        - data/processed/municipios/${key}/caracteristicas.csv
+      params:
+        - logistica
+        - particion
+        - target.horizonte
+      outs:
+        - models/${key}/logistica.joblib
+        - models/${key}/walk_forward/logistica
+        - reports/municipios/${key}/predicciones_logistica.csv:
+            cache: false
+      metrics:
+        - reports/municipios/${key}/metrics_logistica.json:
+            cache: false
+        - reports/municipios/${key}/logistica_coeficientes.json:
+            cache: false
+
+  # Clasificación de brote T+4 con LSTM (mismas semanas y mismo protocolo que XGBoost).
+  train_lstm:
+    foreach: ${municipios}
+    do:
+      cmd: .venv\Scripts\python.exe src/models/train_lstm.py --municipio ${key}
+      deps:
+        - src/models/train_lstm.py
+        - src/models/data_generator.py
+        - src/models/comun.py
+        - src/rutas.py
+        - data/processed/municipios/${key}/caracteristicas.csv
+      params:
+        - lstm
+        - particion
+        - target.horizonte
+      outs:
+        - models/${key}/lstm.keras
+        - models/${key}/lstm_escalador.joblib
+        - models/${key}/walk_forward/lstm
+        - reports/municipios/${key}/predicciones_lstm.csv:
+            cache: false
+      metrics:
+        - reports/municipios/${key}/metrics_lstm.json:
+            cache: false
 
   # Evaluación clínica comparativa (XGBoost, LSTM, logística y líneas base) con umbral de
   # Youden dinámico e intervalos de confianza por bootstrap de bloques.
   evaluate:
-    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py
+    foreach: ${municipios}
+    do:
+      cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio ${key}
+      deps:
+        - src/models/evaluate_model.py
+        - src/models/comun.py
+        - src/rutas.py
+        - data/processed/municipios/${key}/caracteristicas.csv
+        - reports/municipios/${key}/predicciones_xgboost.csv
+        - reports/municipios/${key}/predicciones_lstm.csv
+        - reports/municipios/${key}/predicciones_logistica.csv
+      params:
+        - particion
+        - evaluate
+      metrics:
+        - reports/municipios/${key}/eval_metrics.json:
+            cache: false
+
+  # Tabla comparativa de todos los municipios.
+  resumen:
+    cmd: .venv\Scripts\python.exe src/models/resumen_municipios.py
     deps:
-      - src/models/evaluate_model.py
-      - src/models/comun.py
-      - data/processed/matriz_caracteristicas_cartagena.csv
-      - reports/predicciones_xgboost.csv
-      - reports/predicciones_lstm.csv
-      - reports/predicciones_logistica.csv
+      - src/models/resumen_municipios.py
+      - reports/municipios
     params:
-      - particion
-      - evaluate
+      - municipios
+    outs:
+      - reports/resumen_municipios.csv:
+          cache: false
     metrics:
-      - reports/eval_metrics.json:
+      - reports/resumen_municipios.json:
           cache: false

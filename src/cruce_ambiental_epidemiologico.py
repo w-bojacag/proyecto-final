@@ -1,24 +1,19 @@
 """
-Script independiente para el cruce de información ambiental y epidemiológica (Cartagena, 2007-2025).
+Cruce de información ambiental y epidemiológica de un municipio (2007-2025).
+Uso: python src/cruce_ambiental_epidemiologico.py --municipio cartagena
+
 Objetivo:
-1. Cargar la matriz maestra ambiental diaria de Cartagena.
-2. Cargar los datos epidemiológicos de SIVIGILA (Bolívar) y filtrar para Cartagena.
+1. Cargar el clima diario del municipio.
+2. Cargar los datos epidemiológicos de SIVIGILA (Bolívar) y filtrar por municipio de ocurrencia.
 3. Agregar los datos ambientales diarios a nivel semanal (coincidiendo con las semanas epidemiológicas).
 4. Agregar los casos de dengue de SIVIGILA a nivel semanal (por ANO y SEMANA).
 5. Unir (merge) ambas series en una única matriz integrada para modelado de alerta temprana.
 6. Exportar el resultado a CSV.
 """
 
-from pathlib import Path
 import pandas as pd
-import numpy as np
 
-# Definición de rutas relativas
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent
-AMBIENTAL_PATH = ROOT_DIR / "data" / "processed" / "matriz_maestra_ambiental_cartagena_2007_2025.csv"
-SIVIGILA_PATH = ROOT_DIR / "data" / "processed" / "dengue_bolivar_unificado.csv"
-OUT_PATH = ROOT_DIR / "data" / "processed" / "matriz_cruce_semanal_cartagena.csv"
+from rutas import SIVIGILA_PATH, municipio_desde_argumentos
 
 
 def _parse_fecha(serie):
@@ -42,11 +37,11 @@ def semana_epidemiologica(fechas):
     return anio, semana
 
 
-def cargar_y_procesar_ambiental():
+def cargar_y_procesar_ambiental(rutas):
     print("=" * 70)
     print("1. CARGANDO Y PROCESANDO MATRIZ AMBIENTAL DIARIA")
     print("=" * 70)
-    df_env = pd.read_csv(AMBIENTAL_PATH)
+    df_env = pd.read_csv(rutas.clima)
     df_env["date"] = pd.to_datetime(df_env["date"], errors="coerce")
 
     # Año y semana epidemiológica (domingo a sábado), igual que la SEMANA de SIVIGILA
@@ -76,33 +71,32 @@ def cargar_y_procesar_ambiental():
     return df_env_semanal
 
 
-def cargar_y_procesar_epidemiologico():
+def cargar_y_procesar_epidemiologico(rutas):
     print("\n" + "=" * 70)
-    print("2. CARGANDO Y PROCESANDO DATOS SIVIGILA (CARTAGENA)")
+    print(f"2. CARGANDO Y PROCESANDO DATOS SIVIGILA ({rutas.nombre})")
     print("=" * 70)
     df_epi = pd.read_csv(SIVIGILA_PATH, low_memory=False)
     
-    # Filtrar estrictamente para Cartagena de Indias
-    # Verificamos los nombres en 'Municipio_ocurrencia'
-    if "Municipio_ocurrencia" in df_epi.columns:
-        # Cartagena suele venir como 'CARTAGENA'
-        df_cartagena = df_epi[df_epi["Municipio_ocurrencia"].str.upper().str.contains("CARTAGENA", na=False)].copy()
-    else:
+    # Municipio de ocurrencia (nombre exacto de SIVIGILA, definido en params.yaml)
+    if "Municipio_ocurrencia" not in df_epi.columns:
         raise ValueError("No se encontró la columna 'Municipio_ocurrencia' en el dataset de SIVIGILA.")
+    df_mun = df_epi[df_epi["Municipio_ocurrencia"].str.strip().str.upper() == rutas.nombre].copy()
+    if df_mun.empty:
+        raise ValueError(f"No hay registros de SIVIGILA para '{rutas.nombre}'")
     
     print(f"Casos totales en Bolívar: {len(df_epi):,}")
-    print(f"Casos filtrados para Cartagena: {len(df_cartagena):,}")
+    print(f"Casos filtrados para {rutas.nombre}: {len(df_mun):,}")
     
     # Agregación semanal de casos por ANO y SEMANA
     # Podemos segregar por tipo de caso (ej. todos, o solo confirmados TIP_CAS=3, o confirmados+probables TIP_CAS in [2,3])
     # Aquí creamos conteos generales y específicos para análisis posterior.
-    df_cartagena["casos_totales"] = 1
-    df_cartagena["casos_confirmados"] = (df_cartagena["TIP_CAS"] == 3).astype(int)
-    df_cartagena["casos_probables"] = (df_cartagena["TIP_CAS"] == 2).astype(int)
-    df_cartagena["casos_confirmados_o_probables"] = df_cartagena["TIP_CAS"].isin([2, 3]).astype(int)
+    df_mun["casos_totales"] = 1
+    df_mun["casos_confirmados"] = (df_mun["TIP_CAS"] == 3).astype(int)
+    df_mun["casos_probables"] = (df_mun["TIP_CAS"] == 2).astype(int)
+    df_mun["casos_confirmados_o_probables"] = df_mun["TIP_CAS"].isin([2, 3]).astype(int)
     
     df_epi_semanal = (
-        df_cartagena.groupby(["ANO", "SEMANA"])
+        df_mun.groupby(["ANO", "SEMANA"])
         .agg({
             "casos_totales": "sum",
             "casos_confirmados": "sum",
@@ -112,11 +106,11 @@ def cargar_y_procesar_epidemiologico():
         .reset_index()
     )
     
-    print(f"Semanas epidemiológicas con registros en Cartagena: {len(df_epi_semanal)}")
+    print(f"Semanas epidemiológicas con registros en {rutas.nombre}: {len(df_epi_semanal)}")
     return df_epi_semanal
 
 
-def fusionar_datos(df_env_semanal, df_epi_semanal):
+def fusionar_datos(df_env_semanal, df_epi_semanal, rutas):
     print("\n" + "=" * 70)
     print("3. FUSIONANDO MATRIZ AMBIENTAL Y EPIDEMIOLÓGICA")
     print("=" * 70)
@@ -138,15 +132,16 @@ def fusionar_datos(df_env_semanal, df_epi_semanal):
     print(df_master.head(10).to_string())
     
     # Guardar a CSV
-    df_master.to_csv(OUT_PATH, index=False)
-    print(f"\nMatriz integrada guardada exitosamente en: {OUT_PATH}")
+    df_master.to_csv(rutas.cruce, index=False)
+    print(f"\nMatriz integrada guardada exitosamente en: {rutas.cruce}")
     return df_master
 
 
 def main():
-    df_env_sem = cargar_y_procesar_ambiental()
-    df_epi_sem = cargar_y_procesar_epidemiologico()
-    df_master = fusionar_datos(df_env_sem, df_epi_sem)
+    rutas = municipio_desde_argumentos("Cruce semanal de clima y casos de dengue de un municipio")
+    df_env_sem = cargar_y_procesar_ambiental(rutas)
+    df_epi_sem = cargar_y_procesar_epidemiologico(rutas)
+    fusionar_datos(df_env_sem, df_epi_sem, rutas)
     print("\n¡Proceso de cruce completado con éxito!")
 
 

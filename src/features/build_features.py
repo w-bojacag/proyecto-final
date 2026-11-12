@@ -1,23 +1,18 @@
 """
 Script de Ingeniería de Características (Feature Engineering) para Alertas Tempranas de Dengue.
 Objetivo: Generar variables de rezago (lags) y promedios móviles (rolling means) a partir 
-de la matriz semanal integrada (ambiental + epidemiológica) de Cartagena.
+de la matriz semanal integrada (ambiental + epidemiológica) de un municipio.
+Uso: python src/features/build_features.py --municipio cartagena
 """
 
+import sys
 from pathlib import Path
-import pandas as pd
+
 import numpy as np
-import yaml
+import pandas as pd
 
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent.parent
-INPUT_PATH = ROOT_DIR / "data" / "processed" / "matriz_cruce_semanal_cartagena.csv"
-OUTPUT_PATH = ROOT_DIR / "data" / "processed" / "matriz_caracteristicas_cartagena.csv"
-
-
-def cargar_params_target():
-    with open(ROOT_DIR / "params.yaml", "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)["target"]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rutas import cargar_params, municipio_desde_argumentos  # noqa: E402
 
 
 def umbral_movil(df, col, anos_ventana, percentil, anos_minimos):
@@ -41,15 +36,15 @@ def umbral_movil(df, col, anos_ventana, percentil, anos_minimos):
     )
 
 
-def construir_caracteristicas():
+def construir_caracteristicas(rutas):
     print("=" * 70)
     print("INGENIERÍA DE CARACTERÍSTICAS: REZAGOS (LAGS) Y VENTANAS MÓVILES")
     print("=" * 70)
     
-    if not INPUT_PATH.exists():
-        raise FileNotFoundError(f"No se encontró el archivo base en: {INPUT_PATH}. Ejecute primero cruce_ambiental_epidemiologico.py")
+    if not rutas.cruce.exists():
+        raise FileNotFoundError(f"No se encontró el archivo base en: {rutas.cruce}. Ejecute primero cruce_ambiental_epidemiologico.py")
     
-    df = pd.read_csv(INPUT_PATH)
+    df = pd.read_csv(rutas.cruce)
     print(f"Datos cargados: {len(df)} semanas.")
     
     # Asegurar orden cronológico estricto
@@ -109,7 +104,7 @@ def construir_caracteristicas():
     df["trimestre_aproximado"] = np.ceil(df["SEMANA"] / 13.0).astype(int)
 
     # 4. Canal endémico móvil, etiqueta de brote a T+h y variables relativas al umbral
-    params = cargar_params_target()
+    params = cargar_params("target")
     col = "casos_confirmados_o_probables"
     h = params["horizonte"]
     df["umbral_brote"] = umbral_movil(
@@ -144,10 +139,10 @@ def construir_caracteristicas():
     print(f"Dimensiones de la matriz final de características: {df_modelado.shape}")
     
     # Exportar resultado
-    df_modelado.to_csv(OUTPUT_PATH, index=False)
-    print(f"\nMatriz de características guardada exitosamente en: {OUTPUT_PATH}")
+    df_modelado.to_csv(rutas.caracteristicas, index=False)
+    print(f"\nMatriz de características guardada exitosamente en: {rutas.caracteristicas}")
     return df_modelado
 
 
 if __name__ == "__main__":
-    construir_caracteristicas()
+    construir_caracteristicas(municipio_desde_argumentos("Matriz de características de un municipio"))

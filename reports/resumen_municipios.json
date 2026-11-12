@@ -1,0 +1,462 @@
+{
+    "cartagena": {
+        "contexto": {
+            "semanas": 831,
+            "casos_promedio_semana": 39.83,
+            "semanas_con_umbral_cero": 0.0
+        },
+        "xgboost": {
+            "roc_auc_val": 0.8739669421487605,
+            "roc_auc_test": 0.9212281902155319,
+            "ic95_roc_auc_test": [
+                0.8347493951211624,
+                0.981739802873021
+            ],
+            "pr_auc_test": 0.9275290740469898,
+            "prevalencia_test": 0.5163398692810458,
+            "test_sensibilidad": 0.7721518987341772,
+            "test_especificidad": 0.9459459459459459,
+            "test_precision": 0.9384615384615385,
+            "test_vp": 61,
+            "test_fp": 4,
+            "test_fn": 18,
+            "test_vn": 70
+        },
+        "lstm": {
+            "roc_auc_val": 0.8213957759412304,
+            "roc_auc_test": 0.6204242216900444,
+            "ic95_roc_auc_test": [
+                0.40676887576990506,
+                0.8054934792219273
+            ],
+            "pr_auc_test": 0.6916285708748766,
+            "prevalencia_test": 0.5163398692810458,
+            "test_sensibilidad": 0.4177215189873418,
+            "test_especificidad": 0.6486486486486487,
+            "test_precision": 0.559322033898305,
+            "test_vp": 33,
+            "test_fp": 26,
+            "test_fn": 46,
+            "test_vn": 48
+        },
+        "logistica": {
+            "roc_auc_val": 0.8363177226813591,
+            "roc_auc_test": 0.9295244611700308,
+            "ic95_roc_auc_test": [
+                0.8477003245292718,
+                0.9817204250383654
+            ],
+            "pr_auc_test": 0.9395051238305371,
+            "prevalencia_test": 0.5163398692810458,
+            "test_sensibilidad": 0.6075949367088608,
+            "test_especificidad": 0.9594594594594594,
+            "test_precision": 0.9411764705882353,
+            "test_vp": 48,
+            "test_fp": 3,
+            "test_fn": 31,
+            "test_vn": 71
+        },
+        "base_persistencia": {
+            "roc_auc_val": 0.7477043158861341,
+            "roc_auc_test": 0.8425419089976053,
+            "ic95_roc_auc_test": [
+                0.7412224264635807,
+                0.9221015581826056
+            ],
+            "pr_auc_test": 0.794508333103518,
+            "prevalencia_test": 0.5163398692810458,
+            "test_sensibilidad": 0.5949367088607594,
+            "test_especificidad": 0.8783783783783784,
+            "test_precision": 0.8392857142857143,
+            "test_vp": 47,
+            "test_fp": 9,
+            "test_fn": 32,
+            "test_vn": 65
+        },
+        "base_casos_sobre_umbral": {
+            "roc_auc_val": 0.8560606060606061,
+            "roc_auc_test": 0.9279849469722887,
+            "ic95_roc_auc_test": [
+                0.8434323048416145,
+                0.9802209962873099
+            ],
+            "pr_auc_test": 0.9443903536963467,
+            "prevalencia_test": 0.5163398692810458,
+            "test_sensibilidad": 0.5569620253164557,
+            "test_especificidad": 0.9459459459459459,
+            "test_precision": 0.9166666666666666,
+            "test_vp": 44,
+            "test_fp": 4,
+            "test_fn": 35,
+            "test_vn": 70
+        }
+    },
+    "magangue": {
+        "contexto": {
+            "semanas": 831,
+            "casos_promedio_semana": 5.31,
+            "semanas_con_umbral_cero": 0.019
+        },
+        "xgboost": {
+            "roc_auc_val": 0.6458944281524927,
+            "roc_auc_test": 0.862590799031477,
+            "ic95_roc_auc_test": [
+                0.7308649837715511,
+                0.9540065565057488
+            ],
+            "pr_auc_test": 0.9435546154313499,
+            "prevalencia_test": 0.7712418300653595,
+            "test_sensibilidad": 0.9830508474576272,
+            "test_especificidad": 0.7428571428571429,
+            "test_precision": 0.928,
+            "test_vp": 116,
+            "test_fp": 9,
+            "test_fn": 2,
+            "test_vn": 26
+        },
+        "lstm": {
+            "roc_auc_val": 0.647605083088954,
+            "roc_auc_test": 0.7687651331719129,
+            "ic95_roc_auc_test": [
+                0.5684956416464891,
+                0.922456206467454
+            ],
+            "pr_auc_test": 0.9014819626516081,
+            "prevalencia_test": 0.7712418300653595,
+            "test_sensibilidad": 0.8983050847457628,
+            "test_especificidad": 0.6857142857142857,
+            "test_precision": 0.905982905982906,
+            "test_vp": 106,
+            "test_fp": 11,
+            "test_fn": 12,
+            "test_vn": 24
+        },
+        "logistica": {
+            "roc_auc_val": 0.741813294232649,
+            "roc_auc_test": 0.9478208232445521,
+            "ic95_roc_auc_test": [
+                0.8835596716275851,
+                0.9833107581725564
+            ],
+            "pr_auc_test": 0.9824697926047918,
+            "prevalencia_test": 0.7712418300653595,
+            "test_sensibilidad": 0.9491525423728814,
+            "test_especificidad": 0.7428571428571429,
+            "test_precision": 0.9256198347107438,
+            "test_vp": 112,
+            "test_fp": 9,
+            "test_fn": 6,
+            "test_vn": 26
+        },
+        "base_persistencia": {
+            "roc_auc_val": 0.5850439882697948,
+            "roc_auc_test": 0.77772397094431,
+            "ic95_roc_auc_test": [
+                0.5723013836072687,
+                0.8965247594558724
+            ],
+            "pr_auc_test": 0.8853833978291116,
+            "prevalencia_test": 0.7712418300653595,
+            "test_sensibilidad": 0.17796610169491525,
+            "test_especificidad": 0.8571428571428571,
+            "test_precision": 0.8076923076923077,
+            "test_vp": 21,
+            "test_fp": 5,
+            "test_fn": 97,
+            "test_vn": 30
+        },
+        "base_casos_sobre_umbral": {
+            "roc_auc_val": 0.675464320625611,
+            "roc_auc_test": 0.9391041162227604,
+            "ic95_roc_auc_test": [
+                0.8523035230352304,
+                0.9836765175762977
+            ],
+            "pr_auc_test": 0.9816827823749144,
+            "prevalencia_test": 0.7712418300653595,
+            "test_sensibilidad": 0.8728813559322034,
+            "test_especificidad": 0.9142857142857143,
+            "test_precision": 0.9716981132075472,
+            "test_vp": 103,
+            "test_fp": 3,
+            "test_fn": 15,
+            "test_vn": 32
+        }
+    },
+    "el_carmen_de_bolivar": {
+        "contexto": {
+            "semanas": 831,
+            "casos_promedio_semana": 4.42,
+            "semanas_con_umbral_cero": 0.01
+        },
+        "xgboost": {
+            "roc_auc_val": 0.8808658294778586,
+            "roc_auc_test": 0.8219026548672567,
+            "ic95_roc_auc_test": [
+                0.6864046524615517,
+                0.9179189169592598
+            ],
+            "pr_auc_test": 0.5400553523358472,
+            "prevalencia_test": 0.26143790849673204,
+            "test_sensibilidad": 0.6,
+            "test_especificidad": 0.8761061946902655,
+            "test_precision": 0.631578947368421,
+            "test_vp": 24,
+            "test_fp": 14,
+            "test_fn": 16,
+            "test_vn": 99
+        },
+        "lstm": {
+            "roc_auc_val": 0.8721083939193656,
+            "roc_auc_test": 0.6734513274336282,
+            "ic95_roc_auc_test": [
+                0.49499291319466754,
+                0.8200036297640653
+            ],
+            "pr_auc_test": 0.40511051915099605,
+            "prevalencia_test": 0.26143790849673204,
+            "test_sensibilidad": 0.525,
+            "test_especificidad": 0.7168141592920354,
+            "test_precision": 0.39622641509433965,
+            "test_vp": 21,
+            "test_fp": 32,
+            "test_fn": 19,
+            "test_vn": 81
+        },
+        "logistica": {
+            "roc_auc_val": 0.9458030403172505,
+            "roc_auc_test": 0.8792035398230088,
+            "ic95_roc_auc_test": [
+                0.7818386772974537,
+                0.9507600649350648
+            ],
+            "pr_auc_test": 0.6601465497782577,
+            "prevalencia_test": 0.26143790849673204,
+            "test_sensibilidad": 0.675,
+            "test_especificidad": 0.8053097345132744,
+            "test_precision": 0.5510204081632653,
+            "test_vp": 27,
+            "test_fp": 22,
+            "test_fn": 13,
+            "test_vn": 91
+        },
+        "base_persistencia": {
+            "roc_auc_val": 0.8071711830799735,
+            "roc_auc_test": 0.661504424778761,
+            "ic95_roc_auc_test": [
+                0.5056878874495316,
+                0.7782152907853259
+            ],
+            "pr_auc_test": 0.380718954248366,
+            "prevalencia_test": 0.26143790849673204,
+            "test_sensibilidad": 0.35,
+            "test_especificidad": 0.8938053097345132,
+            "test_precision": 0.5384615384615384,
+            "test_vp": 14,
+            "test_fp": 12,
+            "test_fn": 26,
+            "test_vn": 101
+        },
+        "base_casos_sobre_umbral": {
+            "roc_auc_val": 0.9361368142762723,
+            "roc_auc_test": 0.8382743362831859,
+            "ic95_roc_auc_test": [
+                0.7241097189259621,
+                0.9209107916785252
+            ],
+            "pr_auc_test": 0.627187436497818,
+            "prevalencia_test": 0.26143790849673204,
+            "test_sensibilidad": 0.6,
+            "test_especificidad": 0.8407079646017699,
+            "test_precision": 0.5714285714285714,
+            "test_vp": 24,
+            "test_fp": 18,
+            "test_fn": 16,
+            "test_vn": 95
+        }
+    },
+    "turbaco": {
+        "contexto": {
+            "semanas": 831,
+            "casos_promedio_semana": 4.45,
+            "semanas_con_umbral_cero": 0.177
+        },
+        "xgboost": {
+            "roc_auc_val": 0.696048632218845,
+            "roc_auc_test": 0.7383512544802867,
+            "ic95_roc_auc_test": [
+                0.5255931570589673,
+                0.8739242116974937
+            ],
+            "pr_auc_test": 0.7191123726582924,
+            "prevalencia_test": 0.6078431372549019,
+            "test_sensibilidad": 0.8817204301075269,
+            "test_especificidad": 0.6833333333333333,
+            "test_precision": 0.8118811881188119,
+            "test_vp": 82,
+            "test_fp": 19,
+            "test_fn": 11,
+            "test_vn": 41
+        },
+        "lstm": {
+            "roc_auc_val": 0.6209050996285038,
+            "roc_auc_test": 0.7234767025089606,
+            "ic95_roc_auc_test": [
+                0.5110556406145865,
+                0.8633569396876994
+            ],
+            "pr_auc_test": 0.7281969091569991,
+            "prevalencia_test": 0.6078431372549019,
+            "test_sensibilidad": 0.7956989247311828,
+            "test_especificidad": 0.75,
+            "test_precision": 0.8314606741573034,
+            "test_vp": 74,
+            "test_fp": 15,
+            "test_fn": 19,
+            "test_vn": 45
+        },
+        "logistica": {
+            "roc_auc_val": 0.7355623100303952,
+            "roc_auc_test": 0.8775985663082437,
+            "ic95_roc_auc_test": [
+                0.7545972711224453,
+                0.9531474269793028
+            ],
+            "pr_auc_test": 0.9075980952439046,
+            "prevalencia_test": 0.6078431372549019,
+            "test_sensibilidad": 0.6989247311827957,
+            "test_especificidad": 0.8333333333333334,
+            "test_precision": 0.8666666666666667,
+            "test_vp": 65,
+            "test_fp": 10,
+            "test_fn": 28,
+            "test_vn": 50
+        },
+        "base_persistencia": {
+            "roc_auc_val": 0.6155859506923337,
+            "roc_auc_test": 0.7336021505376344,
+            "ic95_roc_auc_test": [
+                0.5983796560743168,
+                0.839524307328907
+            ],
+            "pr_auc_test": 0.7513948933968887,
+            "prevalencia_test": 0.6078431372549019,
+            "test_sensibilidad": 0.5913978494623656,
+            "test_especificidad": 0.8333333333333334,
+            "test_precision": 0.8461538461538461,
+            "test_vp": 55,
+            "test_fp": 10,
+            "test_fn": 38,
+            "test_vn": 50
+        },
+        "base_casos_sobre_umbral": {
+            "roc_auc_val": 0.7322695035460992,
+            "roc_auc_test": 0.8663978494623655,
+            "ic95_roc_auc_test": [
+                0.7452558245930295,
+                0.9420757812097149
+            ],
+            "pr_auc_test": 0.8990032594192365,
+            "prevalencia_test": 0.6078431372549019,
+            "test_sensibilidad": 0.7096774193548387,
+            "test_especificidad": 0.8333333333333334,
+            "test_precision": 0.868421052631579,
+            "test_vp": 66,
+            "test_fp": 10,
+            "test_fn": 27,
+            "test_vn": 50
+        }
+    },
+    "santa_rosa_del_sur": {
+        "contexto": {
+            "semanas": 831,
+            "casos_promedio_semana": 4.07,
+            "semanas_con_umbral_cero": 0.085
+        },
+        "xgboost": {
+            "roc_auc_val": 0.5602941176470588,
+            "roc_auc_test": 0.8760288065843622,
+            "ic95_roc_auc_test": [
+                0.7659923705136471,
+                0.9597323100152709
+            ],
+            "pr_auc_test": 0.8808312766977935,
+            "prevalencia_test": 0.5294117647058824,
+            "test_sensibilidad": 0.8395061728395061,
+            "test_especificidad": 0.8888888888888888,
+            "test_precision": 0.8947368421052632,
+            "test_vp": 68,
+            "test_fp": 8,
+            "test_fn": 13,
+            "test_vn": 64
+        },
+        "lstm": {
+            "roc_auc_val": 0.5235294117647058,
+            "roc_auc_test": 0.882716049382716,
+            "ic95_roc_auc_test": [
+                0.7706683131683131,
+                0.952971019927635
+            ],
+            "pr_auc_test": 0.9211873515036959,
+            "prevalencia_test": 0.5294117647058824,
+            "test_sensibilidad": 0.8518518518518519,
+            "test_especificidad": 0.8055555555555556,
+            "test_precision": 0.8313253012048193,
+            "test_vp": 69,
+            "test_fp": 14,
+            "test_fn": 12,
+            "test_vn": 58
+        },
+        "logistica": {
+            "roc_auc_val": 0.6636554621848739,
+            "roc_auc_test": 0.9157235939643347,
+            "ic95_roc_auc_test": [
+                0.8285950960316341,
+                0.9727731899209106
+            ],
+            "pr_auc_test": 0.9334025544650432,
+            "prevalencia_test": 0.5294117647058824,
+            "test_sensibilidad": 0.7654320987654321,
+            "test_especificidad": 0.9027777777777778,
+            "test_precision": 0.8985507246376812,
+            "test_vp": 62,
+            "test_fp": 7,
+            "test_fn": 19,
+            "test_vn": 65
+        },
+        "base_persistencia": {
+            "roc_auc_val": 0.6371848739495799,
+            "roc_auc_test": 0.8233024691358025,
+            "ic95_roc_auc_test": [
+                0.7244625946969696,
+                0.9019102449878464
+            ],
+            "pr_auc_test": 0.7842501815541032,
+            "prevalencia_test": 0.5294117647058824,
+            "test_sensibilidad": 0.8271604938271605,
+            "test_especificidad": 0.8194444444444444,
+            "test_precision": 0.8375,
+            "test_vp": 67,
+            "test_fp": 13,
+            "test_fn": 14,
+            "test_vn": 59
+        },
+        "base_casos_sobre_umbral": {
+            "roc_auc_val": 0.6621848739495797,
+            "roc_auc_test": 0.9053497942386831,
+            "ic95_roc_auc_test": [
+                0.814243327158552,
+                0.9672050927091322
+            ],
+            "pr_auc_test": 0.9276485338295872,
+            "prevalencia_test": 0.5294117647058824,
+            "test_sensibilidad": 0.7901234567901234,
+            "test_especificidad": 0.9166666666666666,
+            "test_precision": 0.9142857142857143,
+            "test_vp": 64,
+            "test_fp": 6,
+            "test_fn": 17,
+            "test_vn": 66
+        }
+    }
+}

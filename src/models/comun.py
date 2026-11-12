@@ -5,15 +5,16 @@ Ambos modelos usan la misma etiqueta, el mismo protocolo de evaluación (walk-fo
 y las mismas métricas, para que sus resultados sean comparables entre sí.
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import yaml
 from sklearn.metrics import average_precision_score, confusion_matrix, roc_auc_score, roc_curve
 
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-MATRIZ_PATH = ROOT_DIR / "data" / "processed" / "matriz_caracteristicas_cartagena.csv"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from rutas import ROOT_DIR, cargar_params, municipio_desde_argumentos  # noqa: E402,F401
+
 TARGET = "target_brote_t4"
 
 # Columnas que nunca entran al modelo:
@@ -27,13 +28,11 @@ COLUMNAS_NO_PREDICTORAS = {
 
 
 def load_params(seccion=None):
-    with open(ROOT_DIR / "params.yaml", "r", encoding="utf-8") as f:
-        params = yaml.safe_load(f)
-    return params.get(seccion, {}) if seccion else params
+    return cargar_params(seccion)
 
 
-def cargar_matriz():
-    df = pd.read_csv(MATRIZ_PATH)
+def cargar_matriz(rutas):
+    df = pd.read_csv(rutas.caracteristicas)
     df = df.sort_values(["ANO", "SEMANA"]).reset_index(drop=True)
     return df.dropna(subset=[TARGET]).reset_index(drop=True)
 
@@ -111,3 +110,11 @@ def resumir_predicciones(pred, particion):
         "test_precision": float(tp / (tp + fp)) if tp + fp else float("nan"),
         "test_vp": int(tp), "test_fp": int(fp), "test_fn": int(fn), "test_vn": int(tn),
     }
+
+
+def carpeta_walk_forward(rutas, modelo):
+    """Modelos de cada año del walk-forward: son los que producen las métricas de validación y
+    prueba, y permiten reproducirlas cargando el modelo del año correspondiente."""
+    carpeta = rutas.modelos / "walk_forward" / modelo
+    carpeta.mkdir(parents=True, exist_ok=True)
+    return carpeta

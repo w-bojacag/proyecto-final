@@ -1,4 +1,24 @@
-# Definición de brote (canal endémico móvil), compartida por XGBoost y LSTM.
+# Municipios modelados: cada uno tiene su propio clima, matriz y modelos (independientes entre sí).
+# - nombre: valor de Municipio_ocurrencia en SIVIGILA
+# - divipola: código DANE (MPIO_CDPMP) para el polígono de la cabecera urbana (MGN 2021)
+municipios:
+  cartagena:
+    nombre: CARTAGENA
+    divipola: "13001"
+  magangue:
+    nombre: MAGANGUE
+    divipola: "13430"
+  el_carmen_de_bolivar:
+    nombre: EL CARMEN DE BOLIVAR
+    divipola: "13244"
+  turbaco:
+    nombre: TURBACO
+    divipola: "13836"
+  santa_rosa_del_sur:
+    nombre: SANTA ROSA DEL SUR
+    divipola: "13688"
+
+# Definición de brote (canal endémico móvil), compartida por todos los modelos.
 # Brote en la semana s del año Y: casos > percentil de la semana s en los años Y-anos_ventana..Y-1.
 target:
   anos_ventana: 5

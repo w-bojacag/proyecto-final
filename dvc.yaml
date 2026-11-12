@@ -94,7 +94,29 @@ stages:
       - reports/metrics_lstm.json:
           cache: false
 
-  # Evaluación clínica comparativa (XGBoost, LSTM y líneas base) con umbral de Youden dinámico.
+  # Regresión logística con variables relativas al umbral (modelo interpretable).
+  train_logistica:
+    cmd: .venv\Scripts\python.exe src/models/train_logistica.py
+    deps:
+      - src/models/train_logistica.py
+      - src/models/comun.py
+      - data/processed/matriz_caracteristicas_cartagena.csv
+    params:
+      - logistica
+      - particion
+      - target.horizonte
+    outs:
+      - models/logistica_model.joblib
+      - reports/predicciones_logistica.csv:
+          cache: false
+    metrics:
+      - reports/metrics_logistica.json:
+          cache: false
+      - reports/logistica_coeficientes.json:
+          cache: false
+
+  # Evaluación clínica comparativa (XGBoost, LSTM, logística y líneas base) con umbral de
+  # Youden dinámico e intervalos de confianza por bootstrap de bloques.
   evaluate:
     cmd: .venv\Scripts\python.exe src/models/evaluate_model.py
     deps:
@@ -103,8 +125,10 @@ stages:
       - data/processed/matriz_caracteristicas_cartagena.csv
       - reports/predicciones_xgboost.csv
       - reports/predicciones_lstm.csv
+      - reports/predicciones_logistica.csv
     params:
       - particion
+      - evaluate
     metrics:
       - reports/eval_metrics.json:
           cache: false

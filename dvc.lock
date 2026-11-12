@@ -114,6 +114,10 @@ stages:
       hash: md5
       md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
       size: 540858
+    - path: reports/predicciones_logistica.csv
+      hash: md5
+      md5: 4a04420f5d26183967647b54763ab1b8
+      size: 10862
     - path: reports/predicciones_lstm.csv
       hash: md5
       md5: 409cb5b3b30a8f815a125b7cc3a77ace
@@ -128,18 +132,22 @@ stages:
       size: 4854
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: 5811cc109ac45cc102b8b6e3d1d629de
-      size: 2242
+      md5: bb7c04ad048cbe8e06d7439c14b13724
+      size: 5704
     params:
       params.yaml:
+        evaluate:
+          tamano_bloque: 8
+          repeticiones: 2000
+          semilla: 42
         particion:
           train_end_year: 2019
           val_end_year: 2022
     outs:
     - path: reports/eval_metrics.json
       hash: md5
-      md5: c290fbd2b9826c9b7b6c7485df273087
-      size: 2904
+      md5: a8c1a92a906ce2b3b47637f021659cdd
+      size: 5587
   train_lstm:
     cmd: .venv\Scripts\python.exe src/models/train_lstm.py
     deps:
@@ -232,3 +240,47 @@ stages:
       hash: md5
       md5: 2f66f330409d766bf035813050020961
       size: 328928
+  train_logistica:
+    cmd: .venv\Scripts\python.exe src/models/train_logistica.py
+    deps:
+    - path: data/processed/matriz_caracteristicas_cartagena.csv
+      hash: md5
+      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
+      size: 540858
+    - path: src/models/comun.py
+      hash: md5
+      md5: d8354b5c0431732b924c0db4169c0064
+      size: 4854
+    - path: src/models/train_logistica.py
+      hash: md5
+      md5: 198e010049b9680c00a3996d3bd86c49
+      size: 4083
+    params:
+      params.yaml:
+        logistica:
+          C: 1.0
+          variables:
+          - ratio_casos_umbral_objetivo
+          - ratio_roll4_umbral_objetivo
+          - exceso_actual
+        particion:
+          train_end_year: 2019
+          val_end_year: 2022
+        target.horizonte: 4
+    outs:
+    - path: models/logistica_model.joblib
+      hash: md5
+      md5: be98ab832cc7296d8e2993d2771464a7
+      size: 2241
+    - path: reports/logistica_coeficientes.json
+      hash: md5
+      md5: e95d9a7feb3528ffe59f4d1bb7027f94
+      size: 616
+    - path: reports/metrics_logistica.json
+      hash: md5
+      md5: e0cb0b507b78ac278bad8767c1776bfb
+      size: 379
+    - path: reports/predicciones_logistica.csv
+      hash: md5
+      md5: 4a04420f5d26183967647b54763ab1b8
+      size: 10862

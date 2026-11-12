@@ -1,0 +1,18 @@
+{
+    "ratio_casos_umbral_objetivo": {
+        "coeficiente": 2.1524367634168566,
+        "razon_odds_por_desviacion": 8.605803174428669,
+        "desviacion_log1p": 0.7103551275926715
+    },
+    "ratio_roll4_umbral_objetivo": {
+        "coeficiente": 0.14495799961386865,
+        "razon_odds_por_desviacion": 1.1559910171793186,
+        "desviacion_log1p": 0.7265006279038632
+    },
+    "exceso_actual": {
+        "coeficiente": 1.2847030442834122,
+        "razon_odds_por_desviacion": 3.6135947202637966,
+        "desviacion_log1p": 0.6964145895148861
+    },
+    "intercepto": 0.1480506959898617
+}

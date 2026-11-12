@@ -25,6 +25,18 @@ train:
   subsample: 0.6
   colsample_bytree: 0.4
 
+logistica:
+  C: 1.0   # inverso de la regularización L2
+  variables:
+    - ratio_casos_umbral_objetivo   # casos de la semana / umbral de brote de dentro de 4 semanas
+    - ratio_roll4_umbral_objetivo   # media de las últimas 4 semanas / umbral de dentro de 4 semanas
+    - exceso_actual                 # casos de la semana / umbral de brote de esta semana
+
+evaluate:
+  tamano_bloque: 8      # semanas consecutivas por bloque en el bootstrap
+  repeticiones: 2000
+  semilla: 42
+
 lstm:
   window_size: 12
   max_epochs: 100

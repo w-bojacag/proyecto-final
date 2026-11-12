@@ -7,11 +7,38 @@ de la matriz semanal integrada (ambiental + epidemiológica) de Cartagena.
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import yaml
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent.parent
 INPUT_PATH = ROOT_DIR / "data" / "processed" / "matriz_cruce_semanal_cartagena.csv"
 OUTPUT_PATH = ROOT_DIR / "data" / "processed" / "matriz_caracteristicas_cartagena.csv"
+
+
+def cargar_params_target():
+    with open(ROOT_DIR / "params.yaml", "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)["target"]
+
+
+def umbral_movil(df, col, anos_ventana, percentil, anos_minimos):
+    """Canal endémico móvil: para la semana s del año Y, percentil de los casos de la semana s
+    en los años Y-anos_ventana a Y-1. Usa solo años anteriores (sin información futura).
+
+    - Si hay menos de `anos_minimos` años previos, el umbral queda vacío y esas semanas no se
+      usan (antes se completaban con el percentil de toda la serie, que incluye años futuros).
+    - La semana 53 existe solo en algunos años: se compara con la historia de la semana 52.
+    """
+    semana = df["SEMANA"].clip(upper=52)
+    tabla = df[df["SEMANA"] <= 52].pivot(index="ANO", columns="SEMANA", values=col)
+    tabla.columns.name = "SEMANA_REF"
+    tabla = tabla.reindex(range(tabla.index.min(), tabla.index.max() + 1))
+    umbrales = tabla.rolling(anos_ventana, min_periods=anos_minimos).quantile(percentil).shift(1)
+    largo = umbrales.stack().rename("umbral").reset_index()
+    largo.columns = ["ANO", "SEMANA_REF", "umbral"]
+    return (
+        df[["ANO"]].assign(SEMANA_REF=semana.values)
+        .merge(largo, on=["ANO", "SEMANA_REF"], how="left")["umbral"].values
+    )
 
 
 def construir_caracteristicas():
@@ -81,13 +108,37 @@ def construir_caracteristicas():
     df["mes_aproximado"] = np.ceil(df["SEMANA"] / 4.33).astype(int)
     df["trimestre_aproximado"] = np.ceil(df["SEMANA"] / 13.0).astype(int)
 
-    # 4. Corte estricto basado en el rezago máximo (52 semanas para la memoria anual)
-    #max_lag = max(max(lags_clima), max(lags_casos))
+    # 4. Canal endémico móvil, etiqueta de brote a T+h y variables relativas al umbral
+    params = cargar_params_target()
+    col = "casos_confirmados_o_probables"
+    h = params["horizonte"]
+    df["umbral_brote"] = umbral_movil(
+        df, col, params["anos_ventana"], params["percentil"], params["anos_minimos"]
+    )
+    df["es_brote_actual"] = (df[col] > df["umbral_brote"]).astype(int)
+    df["target_brote_t4"] = df["es_brote_actual"].shift(-h)
+
+    # El umbral de la semana objetivo (t+h) solo depende de años anteriores, así que se conoce en t.
+    # Los modelos comparan los casos actuales contra ese umbral: el volumen absoluto por sí solo
+    # no sirve, porque el umbral sube después de cada año epidémico.
+    df["umbral_objetivo"] = df["umbral_brote"].shift(-h)
+    df["ratio_casos_umbral_objetivo"] = df[col] / (df["umbral_objetivo"] + 1.0)
+    df["ratio_roll4_umbral_objetivo"] = df[f"{col}_roll_mean_4"] / (df["umbral_objetivo"] + 1.0)
+    df["exceso_actual"] = df[col] / (df["umbral_brote"] + 1.0)
+
+    # 5. Corte estricto basado en el rezago máximo (52 semanas para la memoria anual) y en las
+    # últimas h semanas, cuya etiqueta futura todavía no se conoce.
+    # También se descartan las primeras semanas sin historia suficiente para el umbral.
     max_lag = max(max(lags_clima), 52)  # 52 semanas es nuestro rezago máximo (memoria anual)
-    df_modelado = df.iloc[max_lag:].reset_index(drop=True)
-    
+    df_modelado = df.iloc[max_lag:len(df) - h]
+    df_modelado = df_modelado.dropna(subset=["umbral_brote", "umbral_objetivo"]).reset_index(drop=True)
+    print(f"Primera semana con umbral: {df_modelado['ANO'].iloc[0]}-S{df_modelado['SEMANA'].iloc[0]}")
+
     if df_modelado.isna().any().any():
-        raise ValueError("Quedan valores vacíos en la matriz de características")
+        vacias = df_modelado.columns[df_modelado.isna().any()].tolist()
+        raise ValueError(f"Quedan valores vacíos en la matriz de características: {vacias}")
+    print("Proporción de semanas con brote (T+h) por año:")
+    print(df_modelado.groupby("ANO")["target_brote_t4"].mean().round(2).to_string())
     
     print(f"Dimensiones antes de eliminar NaNs por rezagos: {df.shape}")
     print(f"Dimensiones de la matriz final de características: {df_modelado.shape}")

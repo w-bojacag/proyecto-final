@@ -1,200 +1,156 @@
 """
-Script de entrenamiento y evaluación de un modelo LSTM para Alerta Temprana de Dengue.
-Utiliza TensorFlow/Keras para modelar la serie temporal como secuencias.
+Entrenamiento de una red LSTM para la alerta temprana de brote de dengue a T+4 (Cartagena).
+
+Usa la misma etiqueta, las mismas semanas y el mismo protocolo walk-forward que XGBoost:
+1. Se fija el número de épocas con early stopping, entrenando hasta 2019 y validando en 2020-2022.
+2. Para cada año Y se entrena con todos los años anteriores durante ese número de épocas y se
+   predice Y. Cada predicción es el promedio de varias semillas (la red es inestable con ~600
+   secuencias de entrenamiento).
+El escalado se ajusta solo con los años de entrenamiento de cada iteración.
 """
 
-import os
-from pathlib import Path
 import json
-import yaml
-import pandas as pd
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import numpy as np
-import matplotlib.pyplot as plt
-
-# Evitar advertencias innecesarias de TensorFlow
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import pandas as pd
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import roc_auc_score
+from tensorflow.keras import Input, Sequential
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 
+from comun import (
+    ROOT_DIR, TARGET, anos_walk_forward, cargar_matriz, load_params, mascara_entrenamiento,
+    resumir_predicciones,
+)
 from data_generator import crear_ventanas_temporales
 
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent.parent
-# Importante: Usamos la matriz base, el LSTM aprenderá sus propios rezagos temporales
-INPUT_PATH = ROOT_DIR / "data" / "processed" / "matriz_cruce_semanal_cartagena.csv"
-FIG_DIR = ROOT_DIR / "reports" / "figures"
 MODELS_DIR = ROOT_DIR / "models"
-METRICS_PATH = ROOT_DIR / "reports" / "metrics_lstm.json"
+REPORTS_DIR = ROOT_DIR / "reports"
+PRED_PATH = REPORTS_DIR / "predicciones_lstm.csv"
+METRICS_PATH = REPORTS_DIR / "metrics_lstm.json"
 
-FIG_DIR.mkdir(parents=True, exist_ok=True)
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
+CLIMA = [
+    "precipitation_mm", "lst_day_c", "lst_night_c", "air_temp_max_c",
+    "air_temp_mean_c", "air_temp_min_c", "dewpoint_c", "evi", "ndvi",
+]
+# Variables epidemiológicas en escala logarítmica: volumen de casos y su relación con el umbral
+# (casos de la semana frente al umbral actual y al umbral de la semana objetivo).
+EPI = ["casos_confirmados_o_probables", "exceso_actual", "ratio_casos_umbral_objetivo"]
 
 
-def load_params():
-    params_path = ROOT_DIR / "params.yaml"
-    if params_path.exists():
-        with open(params_path, "r", encoding="utf-8") as f:
-            # Podríamos crear una sección 'lstm' en params, por ahora cargamos default o train
-            return yaml.safe_load(f).get("lstm", {
-                "window_size": 12,
-                "epochs": 100,
-                "batch_size": 32,
-                "lstm_units": 16,      # Arquitectura más sencilla (16 en lugar de 32)
-                "dropout_rate": 0.5,   # Mayor agresividad apagando neuronas para evitar memorización
-                "learning_rate": 0.001,
-                "anos_ventana": 5,
-                "train_end_year": 2019,
-                "val_end_year": 2022
-            })
-    return {}
+def preparar_secuencias(df, window_size, incluir_clima):
+    """Devuelve las variables por semana y el índice de fila (semana t) de cada ventana."""
+    valores = df[(CLIMA if incluir_clima else []) + EPI].copy()
+    valores[EPI] = np.log1p(valores[EPI])
+    filas = np.arange(window_size - 1, len(df))
+    return valores.to_numpy(dtype="float32"), filas
 
-def crear_target_binario(df, col_casos="casos_confirmados_o_probables", anos_ventana=5):
-    """
-    Calcula el Canal Endémico Móvil para clasificar cada semana como Brote (1) o Normal (0).
-    A diferencia de XGBoost, no hacemos shift aquí; el data_generator se encarga del horizonte temporal.
-    """
-    df = df.sort_values(["ANO", "SEMANA"]).reset_index(drop=True)
-    umbrales = []
-    
-    for idx, row in df.iterrows():
-        ano_actual = row["ANO"]
-        semana_actual = row["SEMANA"]
-        
-        historia = df[(df["SEMANA"] == semana_actual) & 
-                      (df["ANO"] < ano_actual) & 
-                      (df["ANO"] >= ano_actual - anos_ventana)][col_casos]
-        
-        if len(historia) >= 3:
-            umbral = historia.quantile(0.75)
-        else:
-            umbral = df[df["SEMANA"] == semana_actual][col_casos].quantile(0.75)
-            
-        umbrales.append(umbral)
-        
-    df["umbral_brote"] = umbrales
-    df["es_brote_actual"] = (df[col_casos] > df["umbral_brote"]).astype(int)
-    return df
+
+def escalar(valores, filas_train):
+    """Z-score con media y desviación de las semanas de entrenamiento."""
+    scaler = StandardScaler().fit(valores[filas_train])
+    return scaler.transform(valores).astype("float32")
+
+
+def construir_modelo(params, window_size, n_variables, semilla):
+    tf.keras.utils.set_random_seed(semilla)
+    modelo = Sequential([
+        Input(shape=(window_size, n_variables)),
+        LSTM(params["lstm_units"]),
+        Dropout(params["dropout_rate"]),
+        Dense(1, activation="sigmoid"),
+    ])
+    modelo.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=params["learning_rate"]),
+        loss="binary_crossentropy",
+        metrics=[tf.keras.metrics.AUC(name="auc")],
+    )
+    return modelo
+
+
+def datos_hasta(df, valores, filas, mascara_train, window_size):
+    escalados = escalar(valores, np.where(mascara_train)[0])
+    X = crear_ventanas_temporales(escalados, window_size)
+    y = df[TARGET].to_numpy(dtype="float32")[filas]
+    return X, y
+
 
 def entrenar_modelo_lstm():
     print("=" * 70)
-    print("ENTRENAMIENTO DE RED NEURONAL LSTM - ALERTA TEMPRANA DE DENGUE")
+    print("LSTM - ALERTA TEMPRANA DE BROTE T+4 (WALK-FORWARD)")
     print("=" * 70)
-    
-    if not INPUT_PATH.exists():
-        raise FileNotFoundError(f"No se encontró el archivo base en: {INPUT_PATH}")
-        
-    df = pd.read_csv(INPUT_PATH)
-    params = load_params()
-    print(f"Hiperparámetros LSTM: {params}")
-    
-    # 1. Crear Target actual
-    df = crear_target_binario(df, anos_ventana=params.get("anos_ventana", 5))
-    
-    # 2. Seleccionar Features a pasar a la red
-    # La red neuronal se beneficia de variables puras (ella abstrae las relaciones temporales).
-    # Excluimos identificadores y la variable objetivo actual/futura.
-    features = [
-        "precipitation_mm", "lst_day_c", "lst_night_c", "air_temp_max_c", 
-        "air_temp_mean_c", "air_temp_min_c", "dewpoint_c", "evi", "ndvi",
-        "casos_confirmados_o_probables" # Le pasamos los casos actuales para que la LSTM entienda la curva epidémica
-    ]
-    
-    # Asegurar que existan
-    features = [f for f in features if f in df.columns]
-    
-    df[features] = df[features].interpolate(method='linear', limit_direction='both').fillna(0)
-    
-    # Normalización Híbrida:
-    # 1. Escalado global para variables climáticas
-    climatic_features = [f for f in features if f != "casos_confirmados_o_probables"]
-    scaler = StandardScaler()
-    df[climatic_features] = scaler.fit_transform(df[climatic_features])
-    
-    # 2. Transformación logarítmica (np.log1p) para los casos epidemiológicos
-    # Esto comprime la escala hiperendémica sin perder la magnitud absoluta
-    if "casos_confirmados_o_probables" in features:
-        df["casos_confirmados_o_probables"] = np.log1p(df["casos_confirmados_o_probables"])
-    
-    # 3. Generar Ventanas Temporales (Tensores)
-    window_size = params.get("window_size", 12)
-    horizonte = 4
-    
-    X, y, df_fechas = crear_ventanas_temporales(df, features, "es_brote_actual", window_size, horizonte)
-    
-    print(f"Forma del Tensor X (Features): {X.shape} -> (Muestras, Pasos de tiempo, Variables)")
-    print(f"Forma del Vector y (Target): {y.shape}")
-    
-    # 4. Partición Temporal
-    train_end_year = params.get("train_end_year", 2019)
-    val_end_year = params.get("val_end_year", 2022)
-    
-    mask_train = df_fechas["ANO"] <= train_end_year
-    mask_val = (df_fechas["ANO"] > train_end_year) & (df_fechas["ANO"] <= val_end_year)
-    mask_test = df_fechas["ANO"] > val_end_year
-    
-    X_train, y_train = X[mask_train], y[mask_train]
-    X_val, y_val = X[mask_val], y[mask_val]
-    X_test, y_test = X[mask_test], y[mask_test]
-    
-    # 5. Construcción del Modelo LSTM
-    model = Sequential([
-        LSTM(params.get("lstm_units", 32), input_shape=(window_size, len(features))),
-        Dropout(params.get("dropout_rate", 0.4)),
-        Dense(1, activation='sigmoid')
-    ])
-    
-    optimizer = tf.keras.optimizers.Adam(learning_rate=params.get("learning_rate", 0.001))
-    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['AUC'])
-    
-    print("\nResumen de la Arquitectura LSTM:")
-    model.summary()
-    
-    # Early Stopping para evitar sobreajuste
-    early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=1)
-    
-    # 6. Entrenamiento
-    print("\nIniciando entrenamiento...")
-    history = model.fit(
-        X_train, y_train,
-        epochs=params.get("epochs", 100),
-        batch_size=params.get("batch_size", 32),
-        validation_data=(X_val, y_val),
-        callbacks=[early_stop],
-        verbose=1
-    )
-    
-    # Guardar modelo
-    model_path = MODELS_DIR / "lstm_model.keras"
-    model.save(model_path)
-    print(f"\nModelo LSTM guardado en: {model_path}")
-    
-    # 7. Predicciones y Evaluación ROC-AUC
-    y_pred_train = model.predict(X_train).ravel()
-    y_pred_val = model.predict(X_val).ravel()
-    y_pred_test = model.predict(X_test).ravel()
-    
-    roc_train = float(roc_auc_score(y_train, y_pred_train))
-    roc_val = float(roc_auc_score(y_val, y_pred_val))
-    roc_test = float(roc_auc_score(y_test, y_pred_test))
-    
-    print("\n" + "-" * 50)
-    print("DIAGNÓSTICO DE CLASIFICACIÓN LSTM (ALERTA T+4):")
-    print("-" * 50)
-    print(f"Entrenamiento -> ROC-AUC: {roc_train:.4f}")
-    print(f"Validación    -> ROC-AUC: {roc_val:.4f}")
-    print(f"Prueba (Test) -> ROC-AUC: {roc_test:.4f}")
-    
-    metrics = {
-        "roc_auc_train": roc_train,
-        "roc_auc_val": roc_val,
-        "roc_auc_test": roc_test
-    }
+
+    tf.config.experimental.enable_op_determinism()
+    df = cargar_matriz()
+    params = load_params("lstm")
+    particion = load_params("particion")
+    w = params["window_size"]
+    print(f"Hiperparámetros: {params}")
+
+    valores, filas = preparar_secuencias(df, w, params["incluir_clima"])
+    anos = df["ANO"].to_numpy()
+    ano_fila = anos[filas]
+    horizonte = load_params("target")["horizonte"]
+
+    # 1. Número de épocas: early stopping con entrenamiento <= 2019 y validación 2020-2022
+    m = mascara_entrenamiento(anos, particion["train_end_year"] + 1, horizonte)
+    tr = m[filas]
+    va = (ano_fila > particion["train_end_year"]) & (ano_fila <= particion["val_end_year"])
+    X, y = datos_hasta(df, valores, filas, m, w)
+    epocas = []
+    for semilla in params["semillas"]:
+        modelo = construir_modelo(params, w, X.shape[2], semilla)
+        parada = EarlyStopping(monitor="val_loss", patience=params["patience"], restore_best_weights=True)
+        hist = modelo.fit(X[tr], y[tr], validation_data=(X[va], y[va]), epochs=params["max_epochs"],
+                          batch_size=params["batch_size"], callbacks=[parada], verbose=0)
+        epocas.append(int(np.argmin(hist.history["val_loss"])) + 1)
+    n_epocas = max(1, int(round(np.median(epocas))))
+    print(f"Épocas por semilla (early stopping): {epocas} -> se usan {n_epocas}")
+
+    # 2. Walk-forward anual
+    predicciones = []
+    for ano in anos_walk_forward(df, particion):
+        m = mascara_entrenamiento(anos, ano, horizonte)
+        X, y = datos_hasta(df, valores, filas, m, w)
+        tr, te = m[filas], ano_fila == ano
+        probs = []
+        for semilla in params["semillas"]:
+            modelo = construir_modelo(params, w, X.shape[2], semilla)
+            modelo.fit(X[tr], y[tr], epochs=n_epocas, batch_size=params["batch_size"], verbose=0)
+            probs.append(modelo.predict(X[te], verbose=0).ravel())
+        predicciones.append(pd.DataFrame({
+            "ANO": ano, "SEMANA": df["SEMANA"].to_numpy()[filas][te],
+            "y": y[te].astype(int), "prob": np.mean(probs, axis=0),
+        }))
+        print(f"  {ano}: entrenado con {tr.sum()} secuencias (hasta {ano - 1})")
+
+    pred = pd.concat(predicciones, ignore_index=True)
+    pred.to_csv(PRED_PATH, index=False)
+
+    # Modelo final (primera semilla) entrenado con toda la historia, para uso operativo
+    X, y = datos_hasta(df, valores, filas, np.ones(len(df), dtype=bool), w)
+    modelo = construir_modelo(params, w, X.shape[2], params["semillas"][0])
+    modelo.fit(X, y, epochs=n_epocas, batch_size=params["batch_size"], verbose=0)
+    MODELS_DIR.mkdir(exist_ok=True)
+    modelo.save(MODELS_DIR / "lstm_model.keras")
+
+    resumen = resumir_predicciones(pred, particion)
+    metrics = {k: resumen[k] for k in ("roc_auc_val", "roc_auc_test", "pr_auc_test", "roc_auc_por_ano")}
+    metrics["epocas"] = n_epocas
     with open(METRICS_PATH, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
-        
+
+    print("\n" + "-" * 50)
+    print(f"Validación walk-forward (2020-2022) -> ROC-AUC: {metrics['roc_auc_val']:.4f}")
+    print(f"Prueba walk-forward (2023-2025)     -> ROC-AUC: {metrics['roc_auc_test']:.4f}"
+          f" | PR-AUC: {metrics['pr_auc_test']:.4f}")
+    for ano, valor in metrics["roc_auc_por_ano"].items():
+        print(f"    {ano}: {valor:.4f}")
+
+
 if __name__ == "__main__":
     entrenar_modelo_lstm()

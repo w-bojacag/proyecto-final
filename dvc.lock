@@ -5,14 +5,22 @@ stages:
     deps:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: 00ef3d45b10d639ba1d043d3f1b29e77
-      size: 556627
+      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
+      size: 540858
+    - path: src/models/comun.py
+      hash: md5
+      md5: d8354b5c0431732b924c0db4169c0064
+      size: 4854
     - path: src/models/train_xgboost.py
       hash: md5
-      md5: 079966c38f91f8e937568cce2ac8f7be
-      size: 9364
+      md5: 778111716a8d876c429b3b3ee2def4b1
+      size: 4456
     params:
       params.yaml:
+        particion:
+          train_end_year: 2019
+          val_end_year: 2022
+        target.horizonte: 4
         train:
           n_estimators: 250
           learning_rate: 0.005
@@ -23,21 +31,23 @@ stages:
           random_state: 42
           subsample: 0.6
           colsample_bytree: 0.4
-          train_end_year: 2019
-          val_end_year: 2022
     outs:
     - path: models/xgboost_model.json
       hash: md5
-      md5: 3d2ab765209b5f7ae32758f5b9bb0c29
-      size: 118074
+      md5: 0b97f40ce07e6fa80df2564a47c0b4cb
+      size: 134561
     - path: reports/figures/xgboost_predicciones_cartagena.png
       hash: md5
-      md5: f05259a6adf6e4e8a57acd578a270c59
-      size: 290017
+      md5: 79ba9d815e7d19f6f5ff81db37fa18f0
+      size: 188800
     - path: reports/metrics.json
       hash: md5
-      md5: fa4d4fc0f8feabed63a103fdb2b1d4ca
-      size: 126
+      md5: b2efa7e3314d3c58453ec61da6e9a9d4
+      size: 366
+    - path: reports/predicciones_xgboost.csv
+      hash: md5
+      md5: 130f6f1874b7066c0bed802001a2e5c3
+      size: 7739
   clima:
     cmd: .venv\Scripts\python.exe src/clima.py
     deps:
@@ -83,66 +93,142 @@ stages:
       size: 186997
     - path: src/features/build_features.py
       hash: md5
-      md5: 5b86e59ccb6d44b95727714fb756f5a4
-      size: 4552
+      md5: 3753a23e6bffd9ddb529b1de72bd751c
+      size: 7470
+    params:
+      params.yaml:
+        target:
+          anos_ventana: 5
+          anos_minimos: 3
+          percentil: 0.75
+          horizonte: 4
     outs:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: 00ef3d45b10d639ba1d043d3f1b29e77
-      size: 556627
+      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
+      size: 540858
   evaluate:
     cmd: .venv\Scripts\python.exe src/models/evaluate_model.py
     deps:
     - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: 00ef3d45b10d639ba1d043d3f1b29e77
-      size: 556627
-    - path: models/xgboost_model.json
+      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
+      size: 540858
+    - path: reports/predicciones_lstm.csv
       hash: md5
-      md5: 3d2ab765209b5f7ae32758f5b9bb0c29
-      size: 118074
+      md5: 409cb5b3b30a8f815a125b7cc3a77ace
+      size: 7740
+    - path: reports/predicciones_xgboost.csv
+      hash: md5
+      md5: 130f6f1874b7066c0bed802001a2e5c3
+      size: 7739
+    - path: src/models/comun.py
+      hash: md5
+      md5: d8354b5c0431732b924c0db4169c0064
+      size: 4854
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: ee357ccb80b20d9da62ddbc3c54cbd0d
-      size: 4195
+      md5: 5811cc109ac45cc102b8b6e3d1d629de
+      size: 2242
+    params:
+      params.yaml:
+        particion:
+          train_end_year: 2019
+          val_end_year: 2022
     outs:
     - path: reports/eval_metrics.json
       hash: md5
-      md5: 9db821f718a3caf2c6ac9b987629eb68
-      size: 247
+      md5: c290fbd2b9826c9b7b6c7485df273087
+      size: 2904
   train_lstm:
     cmd: .venv\Scripts\python.exe src/models/train_lstm.py
     deps:
-    - path: data/processed/matriz_cruce_semanal_cartagena.csv
+    - path: data/processed/matriz_caracteristicas_cartagena.csv
       hash: md5
-      md5: e8b128952df5a4412d698728e5571aef
-      size: 186997
+      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
+      size: 540858
+    - path: src/models/comun.py
+      hash: md5
+      md5: d8354b5c0431732b924c0db4169c0064
+      size: 4854
     - path: src/models/data_generator.py
       hash: md5
-      md5: f5450df1af75f0a4da997ccacc62feff
-      size: 2187
+      md5: 423bb4c04737de937476d74200cb4af9
+      size: 851
     - path: src/models/train_lstm.py
       hash: md5
-      md5: 11cc8f9764f637dee31d046cba235cef
-      size: 7913
+      md5: 443cb8c9b438114b668b9fc6d572d13c
+      size: 6605
     params:
       params.yaml:
         lstm:
           window_size: 12
-          epochs: 100
+          max_epochs: 100
+          patience: 10
           batch_size: 32
           lstm_units: 16
           dropout_rate: 0.5
           learning_rate: 0.001
-          anos_ventana: 5
+          semillas:
+          - 42
+          - 7
+          - 2026
+          incluir_clima: true
+        particion:
           train_end_year: 2019
           val_end_year: 2022
+        target.horizonte: 4
     outs:
     - path: models/lstm_model.keras
       hash: md5
-      md5: d87ea3044bf081c8aa43dae26790502a
-      size: 47414
+      md5: a8d2e5ddb9992dcc2e92b7668b79c1c8
+      size: 49246
     - path: reports/metrics_lstm.json
       hash: md5
-      md5: c5ea13a14d2d2a12663b979e9b9659d1
-      size: 125
+      md5: 04308750ec7e62d87cddfef264975d73
+      size: 386
+    - path: reports/predicciones_lstm.csv
+      hash: md5
+      md5: 409cb5b3b30a8f815a125b7cc3a77ace
+      size: 7740
+  eda:
+    cmd: .venv\Scripts\python.exe src/eda_bolivar.py
+    deps:
+    - path: data/processed/dengue_bolivar_unificado.csv
+      hash: md5
+      md5: 4ed41e08bbe689be38a511fa686aad89
+      size: 42318696
+    - path: src/eda_bolivar.py
+      hash: md5
+      md5: 568274fe5fd074d693bdff0c4c1fcbe0
+      size: 10220
+    outs:
+    - path: data/processed/registros_inconsistentes_fecha_2013.csv
+      hash: md5
+      md5: ab0dfa692da05f8dc9f4662368300fc0
+      size: 1186215
+    - path: 
+        data/processed/serie_semanal_top5_bolivar_confirmados_y_probables.csv
+      hash: md5
+      md5: 1d0ba077b67ba09e84babd334050a400
+      size: 88363
+    - path: data/processed/serie_semanal_top5_bolivar_solo_confirmados.csv
+      hash: md5
+      md5: b576c1c84253b2f26921d3ec80a575a3
+      size: 52758
+    - path: data/processed/serie_semanal_top5_bolivar_todos_tip_cas.csv
+      hash: md5
+      md5: cc23e3bd3381733846bdd8d850c4f5e3
+      size: 88561
+    - path: reports/figures/casos_por_anio.png
+      hash: md5
+      md5: 8d2f233e4fc65d229208e74505711e16
+      size: 33233
+    - path: reports/figures/comparacion_definicion_caso.png
+      hash: md5
+      md5: 52d1e832b5bac90df7b3fd867ee30d13
+      size: 443632
+    - path: reports/figures/series_semanales_top5.png
+      hash: md5
+      md5: 2f66f330409d766bf035813050020961
+      size: 328928

@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_PATH = BASE_DIR.parent / "data" / "processed" / "dengue_bolivar_unificado.csv"
+DATA_DIR = BASE_DIR.parent / "data" / "processed"
+DATA_PATH = DATA_DIR / "dengue_bolivar_unificado.csv"
 FIG_DIR = BASE_DIR.parent / "reports" / "figures"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -107,7 +108,7 @@ def investigar_inconsistencia_fechas(df):
         "2013 no debe usarse para analisis de retraso de notificacion sin "
         "excluir o corregir antes estos registros."
     )
-    out = BASE_DIR / "registros_inconsistentes_fecha_2013.csv"
+    out = DATA_DIR / "registros_inconsistentes_fecha_2013.csv"
     incons.to_csv(out, index=False)
     print(f"\nRegistros inconsistentes exportados a: {out}")
     return incons
@@ -158,7 +159,7 @@ def serie_semanal(df, municipios, tip_cas=None, sufijo="", guardar_csv=True):
     )
     if guardar_csv:
         nombre = f"serie_semanal_top5_bolivar{sufijo}.csv"
-        out = BASE_DIR / nombre
+        out = DATA_DIR / nombre
         serie.to_csv(out, index=False)
         print(f"Serie semanal guardada en: {out}")
     print(serie.groupby("Municipio_ocurrencia")["casos"].describe().round(1))

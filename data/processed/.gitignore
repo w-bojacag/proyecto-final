@@ -1,10 +1,10 @@
 /dengue_bolivar_unificado.csv
 /dengue_meta_unificado.csv
-/registros_inconsistentes_fecha_2013.csv
 /serie_semanal_top5_bolivar.csv
-/serie_semanal_top5_bolivar_confirmados_y_probables.csv
-/serie_semanal_top5_bolivar_solo_confirmados.csv
-/serie_semanal_top5_bolivar_todos_tip_cas.csv
 /matriz_maestra_ambiental_cartagena_2007_2025.csv
 /matriz_cruce_semanal_cartagena.csv
 /matriz_caracteristicas_cartagena.csv
+/registros_inconsistentes_fecha_2013.csv
+/serie_semanal_top5_bolivar_todos_tip_cas.csv
+/serie_semanal_top5_bolivar_solo_confirmados.csv
+/serie_semanal_top5_bolivar_confirmados_y_probables.csv

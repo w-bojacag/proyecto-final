@@ -1,3 +1,19 @@
+# Definición de brote (canal endémico móvil), compartida por XGBoost y LSTM.
+# Brote en la semana s del año Y: casos > percentil de la semana s en los años Y-anos_ventana..Y-1.
+target:
+  anos_ventana: 5
+  anos_minimos: 3   # años previos mínimos para calcular el umbral (antes no hay etiqueta)
+  percentil: 0.75
+  horizonte: 4
+
+# Partición cronológica por años epidemiológicos (inclusive):
+# entrenamiento <= train_end_year < validación <= val_end_year < prueba.
+# Validación y prueba se evalúan con walk-forward anual: para predecir el año Y se entrena
+# con todos los años anteriores a Y.
+particion:
+  train_end_year: 2019
+  val_end_year: 2022
+
 train:
   n_estimators: 250
   learning_rate: 0.005
@@ -8,21 +24,16 @@ train:
   random_state: 42
   subsample: 0.6
   colsample_bytree: 0.4
-  # Partición cronológica por años epidemiológicos (inclusive):
-  # entrenamiento <= train_end_year < validación <= val_end_year < prueba
-  train_end_year: 2019
-  val_end_year: 2022
 
 lstm:
   window_size: 12
-  epochs: 100
+  max_epochs: 100
+  patience: 10
   batch_size: 32
   lstm_units: 16
   dropout_rate: 0.5
   learning_rate: 0.001
-  anos_ventana: 5
-  train_end_year: 2019
-  val_end_year: 2022
-
-
-
+  semillas: [42, 7, 2026]
+  # true: 9 variables climáticas + 3 epidemiológicas por semana. Se elige con validación
+  # (2020-2022), no con prueba: con clima 0.821, sin clima 0.803.
+  incluir_clima: true

@@ -11,6 +11,25 @@ stages:
     outs:
       - data/processed/matriz_maestra_ambiental_cartagena_2007_2025.csv
 
+  # Análisis exploratorio de SIVIGILA Bolívar: calidad, series del top 5 de municipios y figuras.
+  eda:
+    cmd: .venv\Scripts\python.exe src/eda_bolivar.py
+    deps:
+      - src/eda_bolivar.py
+      - data/processed/dengue_bolivar_unificado.csv
+    outs:
+      - data/processed/registros_inconsistentes_fecha_2013.csv
+      - data/processed/serie_semanal_top5_bolivar_todos_tip_cas.csv
+      - data/processed/serie_semanal_top5_bolivar_solo_confirmados.csv
+      - data/processed/serie_semanal_top5_bolivar_confirmados_y_probables.csv
+    plots:
+      - reports/figures/casos_por_anio.png:
+          cache: false
+      - reports/figures/series_semanales_top5.png:
+          cache: false
+      - reports/figures/comparacion_definicion_caso.png:
+          cache: false
+
   # Cruce semanal (semana epidemiológica INS) de casos SIVIGILA de Cartagena con el clima.
   cruce:
     cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py
@@ -21,25 +40,33 @@ stages:
     outs:
       - data/processed/matriz_cruce_semanal_cartagena.csv
 
-  # Rezagos, medias móviles e interpolación de vacíos climáticos.
+  # Rezagos, medias móviles, interpolación de vacíos climáticos, canal endémico móvil,
+  # etiqueta de brote a T+4 y variables relativas al umbral.
   features:
     cmd: .venv\Scripts\python.exe src/features/build_features.py
     deps:
       - src/features/build_features.py
       - data/processed/matriz_cruce_semanal_cartagena.csv
+    params:
+      - target
     outs:
       - data/processed/matriz_caracteristicas_cartagena.csv
 
-  # Clasificación de brote T+4 con XGBoost.
+  # Clasificación de brote T+4 con XGBoost (walk-forward anual).
   train:
     cmd: .venv\Scripts\python.exe src/models/train_xgboost.py
     deps:
       - src/models/train_xgboost.py
+      - src/models/comun.py
       - data/processed/matriz_caracteristicas_cartagena.csv
     params:
       - train
+      - particion
+      - target.horizonte
     outs:
       - models/xgboost_model.json
+      - reports/predicciones_xgboost.csv:
+          cache: false
     metrics:
       - reports/metrics.json:
           cache: false
@@ -47,30 +74,37 @@ stages:
       - reports/figures/xgboost_predicciones_cartagena.png:
           cache: false
 
-  # Evaluación clínica en el conjunto de prueba (Test) con matriz de confusión
-  evaluate:
-    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py
-    deps:
-      - src/models/evaluate_model.py
-      - data/processed/matriz_caracteristicas_cartagena.csv
-      - models/xgboost_model.json
-    metrics:
-      - reports/eval_metrics.json:
-          cache: false
-
-  # Entrenamiento del modelo Deep Learning (LSTM) para series temporales
+  # Clasificación de brote T+4 con LSTM (mismas semanas y mismo protocolo que XGBoost).
   train_lstm:
     cmd: .venv\Scripts\python.exe src/models/train_lstm.py
     deps:
       - src/models/train_lstm.py
       - src/models/data_generator.py
-      - data/processed/matriz_cruce_semanal_cartagena.csv
+      - src/models/comun.py
+      - data/processed/matriz_caracteristicas_cartagena.csv
     params:
       - lstm
+      - particion
+      - target.horizonte
     outs:
       - models/lstm_model.keras
+      - reports/predicciones_lstm.csv:
+          cache: false
     metrics:
       - reports/metrics_lstm.json:
           cache: false
 
-
+  # Evaluación clínica comparativa (XGBoost, LSTM y líneas base) con umbral de Youden dinámico.
+  evaluate:
+    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py
+    deps:
+      - src/models/evaluate_model.py
+      - src/models/comun.py
+      - data/processed/matriz_caracteristicas_cartagena.csv
+      - reports/predicciones_xgboost.csv
+      - reports/predicciones_lstm.csv
+    params:
+      - particion
+    metrics:
+      - reports/eval_metrics.json:
+          cache: false

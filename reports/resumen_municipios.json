@@ -20,7 +20,13 @@
             "test_vp": 61,
             "test_fp": 4,
             "test_fn": 18,
-            "test_vn": 70
+            "test_vn": 70,
+            "test_brotes": 6,
+            "test_brotes_avisados": 1,
+            "test_capacidad_deteccion": 0.16666666666666666,
+            "test_razon_alertas": 0.75,
+            "test_desempeno_evento": 0.4583333333333333,
+            "test_ventana_oportunidad_mediana": 4.0
         },
         "lstm": {
             "roc_auc_val": 0.8213957759412304,
@@ -37,7 +43,13 @@
             "test_vp": 33,
             "test_fp": 26,
             "test_fn": 46,
-            "test_vn": 48
+            "test_vn": 48,
+            "test_brotes": 6,
+            "test_brotes_avisados": 3,
+            "test_capacidad_deteccion": 0.5,
+            "test_razon_alertas": 0.5,
+            "test_desempeno_evento": 0.5,
+            "test_ventana_oportunidad_mediana": 31.0
         },
         "logistica": {
             "roc_auc_val": 0.8363177226813591,
@@ -54,7 +66,13 @@
             "test_vp": 48,
             "test_fp": 3,
             "test_fn": 31,
-            "test_vn": 71
+            "test_vn": 71,
+            "test_brotes": 6,
+            "test_brotes_avisados": 1,
+            "test_capacidad_deteccion": 0.16666666666666666,
+            "test_razon_alertas": 0.8,
+            "test_desempeno_evento": 0.48333333333333334,
+            "test_ventana_oportunidad_mediana": 4.0
         },
         "base_persistencia": {
             "roc_auc_val": 0.7477043158861341,
@@ -71,7 +89,13 @@
             "test_vp": 47,
             "test_fp": 9,
             "test_fn": 32,
-            "test_vn": 65
+            "test_vn": 65,
+            "test_brotes": 6,
+            "test_brotes_avisados": 2,
+            "test_capacidad_deteccion": 0.3333333333333333,
+            "test_razon_alertas": 0.8,
+            "test_desempeno_evento": 0.5666666666666667,
+            "test_ventana_oportunidad_mediana": 31.5
         },
         "base_casos_sobre_umbral": {
             "roc_auc_val": 0.8560606060606061,
@@ -88,7 +112,13 @@
             "test_vp": 44,
             "test_fp": 4,
             "test_fn": 35,
-            "test_vn": 70
+            "test_vn": 70,
+            "test_brotes": 6,
+            "test_brotes_avisados": 0,
+            "test_capacidad_deteccion": 0.0,
+            "test_razon_alertas": 0.5,
+            "test_desempeno_evento": 0.25,
+            "test_ventana_oportunidad_mediana": NaN
         }
     },
     "magangue": {
@@ -112,7 +142,13 @@
             "test_vp": 116,
             "test_fp": 9,
             "test_fn": 2,
-            "test_vn": 26
+            "test_vn": 26,
+            "test_brotes": 4,
+            "test_brotes_avisados": 3,
+            "test_capacidad_deteccion": 0.75,
+            "test_razon_alertas": 0.75,
+            "test_desempeno_evento": 0.75,
+            "test_ventana_oportunidad_mediana": 4.0
         },
         "lstm": {
             "roc_auc_val": 0.647605083088954,
@@ -129,7 +165,13 @@
             "test_vp": 106,
             "test_fp": 11,
             "test_fn": 12,
-            "test_vn": 24
+            "test_vn": 24,
+            "test_brotes": 4,
+            "test_brotes_avisados": 2,
+            "test_capacidad_deteccion": 0.5,
+            "test_razon_alertas": 0.6666666666666666,
+            "test_desempeno_evento": 0.5833333333333333,
+            "test_ventana_oportunidad_mediana": 52.0
         },
         "logistica": {
             "roc_auc_val": 0.741813294232649,
@@ -146,7 +188,13 @@
             "test_vp": 112,
             "test_fp": 9,
             "test_fn": 6,
-            "test_vn": 26
+            "test_vn": 26,
+            "test_brotes": 4,
+            "test_brotes_avisados": 1,
+            "test_capacidad_deteccion": 0.25,
+            "test_razon_alertas": 0.6666666666666666,
+            "test_desempeno_evento": 0.4583333333333333,
+            "test_ventana_oportunidad_mediana": 10.0
         },
         "base_persistencia": {
             "roc_auc_val": 0.5850439882697948,
@@ -163,7 +211,13 @@
             "test_vp": 21,
             "test_fp": 5,
             "test_fn": 97,
-            "test_vn": 30
+            "test_vn": 30,
+            "test_brotes": 4,
+            "test_brotes_avisados": 0,
+            "test_capacidad_deteccion": 0.0,
+            "test_razon_alertas": 0.5,
+            "test_desempeno_evento": 0.25,
+            "test_ventana_oportunidad_mediana": NaN
         },
         "base_casos_sobre_umbral": {
             "roc_auc_val": 0.675464320625611,
@@ -180,7 +234,13 @@
             "test_vp": 103,
             "test_fp": 3,
             "test_fn": 15,
-            "test_vn": 32
+            "test_vn": 32,
+            "test_brotes": 4,
+            "test_brotes_avisados": 1,
+            "test_capacidad_deteccion": 0.25,
+            "test_razon_alertas": 1.0,
+            "test_desempeno_evento": 0.625,
+            "test_ventana_oportunidad_mediana": 10.0
         }
     },
     "el_carmen_de_bolivar": {
@@ -204,7 +264,13 @@
             "test_vp": 24,
             "test_fp": 14,
             "test_fn": 16,
-            "test_vn": 99
+            "test_vn": 99,
+            "test_brotes": 8,
+            "test_brotes_avisados": 4,
+            "test_capacidad_deteccion": 0.5,
+            "test_razon_alertas": 1.0,
+            "test_desempeno_evento": 0.75,
+            "test_ventana_oportunidad_mediana": 7.0
         },
         "lstm": {
             "roc_auc_val": 0.8721083939193656,
@@ -221,7 +287,13 @@
             "test_vp": 21,
             "test_fp": 32,
             "test_fn": 19,
-            "test_vn": 81
+            "test_vn": 81,
+            "test_brotes": 8,
+            "test_brotes_avisados": 3,
+            "test_capacidad_deteccion": 0.375,
+            "test_razon_alertas": 0.3333333333333333,
+            "test_desempeno_evento": 0.35416666666666663,
+            "test_ventana_oportunidad_mediana": 26.0
         },
         "logistica": {
             "roc_auc_val": 0.9458030403172505,
@@ -238,7 +310,13 @@
             "test_vp": 27,
             "test_fp": 22,
             "test_fn": 13,
-            "test_vn": 91
+            "test_vn": 91,
+            "test_brotes": 8,
+            "test_brotes_avisados": 6,
+            "test_capacidad_deteccion": 0.75,
+            "test_razon_alertas": 0.7142857142857143,
+            "test_desempeno_evento": 0.7321428571428572,
+            "test_ventana_oportunidad_mediana": 7.0
         },
         "base_persistencia": {
             "roc_auc_val": 0.8071711830799735,
@@ -255,7 +333,13 @@
             "test_vp": 14,
             "test_fp": 12,
             "test_fn": 26,
-            "test_vn": 101
+            "test_vn": 101,
+            "test_brotes": 8,
+            "test_brotes_avisados": 1,
+            "test_capacidad_deteccion": 0.125,
+            "test_razon_alertas": 0.4,
+            "test_desempeno_evento": 0.2625,
+            "test_ventana_oportunidad_mediana": 26.0
         },
         "base_casos_sobre_umbral": {
             "roc_auc_val": 0.9361368142762723,
@@ -272,7 +356,13 @@
             "test_vp": 24,
             "test_fp": 18,
             "test_fn": 16,
-            "test_vn": 95
+            "test_vn": 95,
+            "test_brotes": 8,
+            "test_brotes_avisados": 4,
+            "test_capacidad_deteccion": 0.5,
+            "test_razon_alertas": 0.7142857142857143,
+            "test_desempeno_evento": 0.6071428571428572,
+            "test_ventana_oportunidad_mediana": 7.0
         }
     },
     "turbaco": {
@@ -296,7 +386,13 @@
             "test_vp": 82,
             "test_fp": 19,
             "test_fn": 11,
-            "test_vn": 41
+            "test_vn": 41,
+            "test_brotes": 6,
+            "test_brotes_avisados": 4,
+            "test_capacidad_deteccion": 0.6666666666666666,
+            "test_razon_alertas": 0.5,
+            "test_desempeno_evento": 0.5833333333333333,
+            "test_ventana_oportunidad_mediana": 26.0
         },
         "lstm": {
             "roc_auc_val": 0.6209050996285038,
@@ -313,7 +409,13 @@
             "test_vp": 74,
             "test_fp": 15,
             "test_fn": 19,
-            "test_vn": 45
+            "test_vn": 45,
+            "test_brotes": 6,
+            "test_brotes_avisados": 2,
+            "test_capacidad_deteccion": 0.3333333333333333,
+            "test_razon_alertas": 1.0,
+            "test_desempeno_evento": 0.6666666666666666,
+            "test_ventana_oportunidad_mediana": 40.0
         },
         "logistica": {
             "roc_auc_val": 0.7355623100303952,
@@ -330,7 +432,13 @@
             "test_vp": 65,
             "test_fp": 10,
             "test_fn": 28,
-            "test_vn": 50
+            "test_vn": 50,
+            "test_brotes": 6,
+            "test_brotes_avisados": 2,
+            "test_capacidad_deteccion": 0.3333333333333333,
+            "test_razon_alertas": 0.6,
+            "test_desempeno_evento": 0.4666666666666667,
+            "test_ventana_oportunidad_mediana": 16.5
         },
         "base_persistencia": {
             "roc_auc_val": 0.6155859506923337,
@@ -347,7 +455,13 @@
             "test_vp": 55,
             "test_fp": 10,
             "test_fn": 38,
-            "test_vn": 50
+            "test_vn": 50,
+            "test_brotes": 6,
+            "test_brotes_avisados": 1,
+            "test_capacidad_deteccion": 0.16666666666666666,
+            "test_razon_alertas": 0.3333333333333333,
+            "test_desempeno_evento": 0.25,
+            "test_ventana_oportunidad_mediana": 21.0
         },
         "base_casos_sobre_umbral": {
             "roc_auc_val": 0.7322695035460992,
@@ -364,7 +478,13 @@
             "test_vp": 66,
             "test_fp": 10,
             "test_fn": 27,
-            "test_vn": 50
+            "test_vn": 50,
+            "test_brotes": 6,
+            "test_brotes_avisados": 3,
+            "test_capacidad_deteccion": 0.5,
+            "test_razon_alertas": 0.7777777777777778,
+            "test_desempeno_evento": 0.6388888888888888,
+            "test_ventana_oportunidad_mediana": 8.0
         }
     },
     "santa_rosa_del_sur": {
@@ -388,7 +508,13 @@
             "test_vp": 68,
             "test_fp": 8,
             "test_fn": 13,
-            "test_vn": 64
+            "test_vn": 64,
+            "test_brotes": 6,
+            "test_brotes_avisados": 2,
+            "test_capacidad_deteccion": 0.3333333333333333,
+            "test_razon_alertas": 0.6666666666666666,
+            "test_desempeno_evento": 0.5,
+            "test_ventana_oportunidad_mediana": 4.5
         },
         "lstm": {
             "roc_auc_val": 0.5235294117647058,
@@ -405,7 +531,13 @@
             "test_vp": 69,
             "test_fp": 14,
             "test_fn": 12,
-            "test_vn": 58
+            "test_vn": 58,
+            "test_brotes": 6,
+            "test_brotes_avisados": 1,
+            "test_capacidad_deteccion": 0.16666666666666666,
+            "test_razon_alertas": 1.0,
+            "test_desempeno_evento": 0.5833333333333334,
+            "test_ventana_oportunidad_mediana": 5.0
         },
         "logistica": {
             "roc_auc_val": 0.6636554621848739,
@@ -422,7 +554,13 @@
             "test_vp": 62,
             "test_fp": 7,
             "test_fn": 19,
-            "test_vn": 65
+            "test_vn": 65,
+            "test_brotes": 6,
+            "test_brotes_avisados": 2,
+            "test_capacidad_deteccion": 0.3333333333333333,
+            "test_razon_alertas": 0.8333333333333334,
+            "test_desempeno_evento": 0.5833333333333334,
+            "test_ventana_oportunidad_mediana": 4.5
         },
         "base_persistencia": {
             "roc_auc_val": 0.6371848739495799,
@@ -439,7 +577,13 @@
             "test_vp": 67,
             "test_fp": 13,
             "test_fn": 14,
-            "test_vn": 59
+            "test_vn": 59,
+            "test_brotes": 6,
+            "test_brotes_avisados": 3,
+            "test_capacidad_deteccion": 0.5,
+            "test_razon_alertas": 0.5714285714285714,
+            "test_desempeno_evento": 0.5357142857142857,
+            "test_ventana_oportunidad_mediana": 7.0
         },
         "base_casos_sobre_umbral": {
             "roc_auc_val": 0.6621848739495797,
@@ -456,7 +600,13 @@
             "test_vp": 64,
             "test_fp": 6,
             "test_fn": 17,
-            "test_vn": 66
+            "test_vn": 66,
+            "test_brotes": 6,
+            "test_brotes_avisados": 3,
+            "test_capacidad_deteccion": 0.5,
+            "test_razon_alertas": 0.8571428571428571,
+            "test_desempeno_evento": 0.6785714285714286,
+            "test_ventana_oportunidad_mediana": 5.0
         }
     }
 }

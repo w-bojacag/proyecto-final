@@ -10,30 +10,75 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rutas import cargar_params, municipio_desde_argumentos  # noqa: E402
 
 
-def umbral_movil(df, col, anos_ventana, percentil, anos_minimos):
-    """Canal endémico móvil: para la semana s del año Y, percentil de los casos de la semana s
-    en los años Y-anos_ventana a Y-1. Usa solo años anteriores (sin información futura).
+def umbral_movil(df, col, params):
+    """Canal endémico móvil: umbral de brote de la semana s del año Y calculado con los casos de
+    la semana s en los años Y-anos_ventana a Y-1. Usa solo años anteriores (sin información futura).
+
+    Métodos (params["metodo"]):
+    - "percentil": percentil `percentil` de esos años (por defecto P75).
+    - "bortman": límite superior del canal de Bortman (1999): intervalo de confianza del 95 %
+      (t de Student) de la media geométrica. Los ceros se manejan sumando un desplazamiento
+      mínimo (0,001), que según Umaña et al. (2026) rinde mejor que sumar 1.
 
     - Si hay menos de `anos_minimos` años previos, el umbral queda vacío y esas semanas no se
       usan (antes se completaban con el percentil de toda la serie, que incluye años futuros).
     - La semana 53 existe solo en algunos años: se compara con la historia de la semana 52.
     """
+    ventana, minimo = params["anos_ventana"], params["anos_minimos"]
     semana = df["SEMANA"].clip(upper=52)
     tabla = df[df["SEMANA"] <= 52].pivot(index="ANO", columns="SEMANA", values=col)
     tabla.columns.name = "SEMANA_REF"
     tabla = tabla.reindex(range(tabla.index.min(), tabla.index.max() + 1))
-    umbrales = tabla.rolling(anos_ventana, min_periods=anos_minimos).quantile(percentil).shift(1)
+    if params["metodo"] == "percentil":
+        umbrales = tabla.rolling(ventana, min_periods=minimo).quantile(params["percentil"]).shift(1)
+    elif params["metodo"] == "bortman":
+        desplazamiento = params["bortman_desplazamiento"]
+        logs = np.log(tabla + desplazamiento)
+        media = logs.rolling(ventana, min_periods=minimo).mean()
+        desv = logs.rolling(ventana, min_periods=minimo).std()
+        n = logs.rolling(ventana, min_periods=minimo).count()
+        t = pd.DataFrame(stats.t.ppf(0.975, n - 1), index=n.index, columns=n.columns)
+        umbrales = (np.exp(media + t * desv / np.sqrt(n)) - desplazamiento).clip(lower=0).shift(1)
+    else:
+        raise ValueError(f"Método de canal endémico desconocido: {params['metodo']}")
     largo = umbrales.stack().rename("umbral").reset_index()
     largo.columns = ["ANO", "SEMANA_REF", "umbral"]
     return (
         df[["ANO"]].assign(SEMANA_REF=semana.values)
         .merge(largo, on=["ANO", "SEMANA_REF"], how="left")["umbral"].values
     )
+
+
+def agregar_etiqueta(df, params, col="casos_confirmados_o_probables"):
+    """Umbral de brote, etiqueta a T+h y variables relativas al umbral.
+
+    Brote en la semana t: los casos superan el umbral durante `semanas_consecutivas` semanas
+    seguidas que terminan en t. Con 1 basta una semana; con 3 se exige un exceso sostenido,
+    como la definición de brote del Ministerio de Salud e INS usada por Umaña et al. (2026),
+    lo que evita que un caso aislado en una semana de umbral bajo cuente como brote.
+    """
+    h = params["horizonte"]
+    df = df.copy()
+    df["umbral_brote"] = umbral_movil(df, col, params)
+    supera = (df[col] > df["umbral_brote"]).astype(int)
+    k = params["semanas_consecutivas"]
+    df["es_brote_actual"] = (supera.rolling(k, min_periods=k).min() == 1).astype(int)
+    df["target_brote_t4"] = df["es_brote_actual"].shift(-h)
+
+    # El umbral de la semana objetivo (t+h) solo depende de años anteriores, así que se conoce en t.
+    # Los modelos comparan los casos actuales contra ese umbral: el volumen absoluto por sí solo
+    # no sirve, porque el umbral sube después de cada año epidémico.
+    df["umbral_objetivo"] = df["umbral_brote"].shift(-h)
+    df["ratio_casos_umbral_objetivo"] = df[col] / (df["umbral_objetivo"] + 1.0)
+    df["ratio_roll4_umbral_objetivo"] = df[f"{col}_roll_mean_4"] / (df["umbral_objetivo"] + 1.0)
+    df["exceso_actual"] = df[col] / (df["umbral_brote"] + 1.0)
+    return df
 
 
 def construir_caracteristicas(rutas):
@@ -105,21 +150,8 @@ def construir_caracteristicas(rutas):
 
     # 4. Canal endémico móvil, etiqueta de brote a T+h y variables relativas al umbral
     params = cargar_params("target")
-    col = "casos_confirmados_o_probables"
     h = params["horizonte"]
-    df["umbral_brote"] = umbral_movil(
-        df, col, params["anos_ventana"], params["percentil"], params["anos_minimos"]
-    )
-    df["es_brote_actual"] = (df[col] > df["umbral_brote"]).astype(int)
-    df["target_brote_t4"] = df["es_brote_actual"].shift(-h)
-
-    # El umbral de la semana objetivo (t+h) solo depende de años anteriores, así que se conoce en t.
-    # Los modelos comparan los casos actuales contra ese umbral: el volumen absoluto por sí solo
-    # no sirve, porque el umbral sube después de cada año epidémico.
-    df["umbral_objetivo"] = df["umbral_brote"].shift(-h)
-    df["ratio_casos_umbral_objetivo"] = df[col] / (df["umbral_objetivo"] + 1.0)
-    df["ratio_roll4_umbral_objetivo"] = df[f"{col}_roll_mean_4"] / (df["umbral_objetivo"] + 1.0)
-    df["exceso_actual"] = df[col] / (df["umbral_brote"] + 1.0)
+    df = agregar_etiqueta(df, params)
 
     # 5. Corte estricto basado en el rezago máximo (52 semanas para la memoria anual) y en las
     # últimas h semanas, cuya etiqueta futura todavía no se conoce.

@@ -19,6 +19,13 @@
         "test_fp": 9,
         "test_fn": 2,
         "test_vn": 26,
+        "test_brotes": 4,
+        "test_brotes_avisados": 3,
+        "test_episodios_alerta": 4,
+        "test_capacidad_deteccion": 0.75,
+        "test_razon_alertas": 0.75,
+        "test_desempeno_evento": 0.75,
+        "test_ventana_oportunidad_mediana": 4.0,
         "ic95_roc_auc_test": [
             0.7308649837715511,
             0.9540065565057488
@@ -53,6 +60,13 @@
         "test_fp": 11,
         "test_fn": 12,
         "test_vn": 24,
+        "test_brotes": 4,
+        "test_brotes_avisados": 2,
+        "test_episodios_alerta": 3,
+        "test_capacidad_deteccion": 0.5,
+        "test_razon_alertas": 0.6666666666666666,
+        "test_desempeno_evento": 0.5833333333333333,
+        "test_ventana_oportunidad_mediana": 52.0,
         "ic95_roc_auc_test": [
             0.5684956416464891,
             0.922456206467454
@@ -87,6 +101,13 @@
         "test_fp": 9,
         "test_fn": 6,
         "test_vn": 26,
+        "test_brotes": 4,
+        "test_brotes_avisados": 1,
+        "test_episodios_alerta": 3,
+        "test_capacidad_deteccion": 0.25,
+        "test_razon_alertas": 0.6666666666666666,
+        "test_desempeno_evento": 0.4583333333333333,
+        "test_ventana_oportunidad_mediana": 10.0,
         "ic95_roc_auc_test": [
             0.8835596716275851,
             0.9833107581725564
@@ -121,6 +142,13 @@
         "test_fp": 5,
         "test_fn": 97,
         "test_vn": 30,
+        "test_brotes": 4,
+        "test_brotes_avisados": 0,
+        "test_episodios_alerta": 2,
+        "test_capacidad_deteccion": 0.0,
+        "test_razon_alertas": 0.5,
+        "test_desempeno_evento": 0.25,
+        "test_ventana_oportunidad_mediana": NaN,
         "ic95_roc_auc_test": [
             0.5723013836072687,
             0.8965247594558724
@@ -155,6 +183,13 @@
         "test_fp": 3,
         "test_fn": 15,
         "test_vn": 32,
+        "test_brotes": 4,
+        "test_brotes_avisados": 1,
+        "test_episodios_alerta": 4,
+        "test_capacidad_deteccion": 0.25,
+        "test_razon_alertas": 1.0,
+        "test_desempeno_evento": 0.625,
+        "test_ventana_oportunidad_mediana": 10.0,
         "ic95_roc_auc_test": [
             0.8523035230352304,
             0.9836765175762977

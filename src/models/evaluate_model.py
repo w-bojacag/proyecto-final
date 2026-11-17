@@ -113,6 +113,10 @@ def evaluar_modelos(rutas):
             "especif.": f"{r['test_especificidad']:.0%}",
             "precisión": f"{r['test_precision']:.0%}",
             "VP/FP/FN/VN": f"{r['test_vp']}/{r['test_fp']}/{r['test_fn']}/{r['test_vn']}",
+            "brotes avisados": f"{r['test_brotes_avisados']}/{r['test_brotes']}",
+            "razón alertas": f"{r['test_razon_alertas']:.2f}",
+            "desempeño evento": f"{r['test_desempeno_evento']:.2f}",
+            "ventana (sem)": f"{r['test_ventana_oportunidad_mediana']:.0f}",
         })
     print("=" * 70)
     print(f"EVALUACIÓN COMPARATIVA - {rutas.nombre} (walk-forward; prueba 2023-2025)")

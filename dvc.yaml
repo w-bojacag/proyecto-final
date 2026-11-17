@@ -83,6 +83,7 @@ stages:
         - train
         - particion
         - target.horizonte
+        - eventos
       outs:
         - models/${key}/xgboost.json
         - models/${key}/walk_forward/xgboost
@@ -109,6 +110,7 @@ stages:
         - logistica
         - particion
         - target.horizonte
+        - eventos
       outs:
         - models/${key}/logistica.joblib
         - models/${key}/walk_forward/logistica
@@ -135,6 +137,7 @@ stages:
         - lstm
         - particion
         - target.horizonte
+        - eventos
       outs:
         - models/${key}/lstm.keras
         - models/${key}/lstm_escalador.joblib
@@ -161,6 +164,7 @@ stages:
         - reports/municipios/${key}/predicciones_logistica.csv
       params:
         - particion
+        - eventos
         - evaluate
       metrics:
         - reports/municipios/${key}/eval_metrics.json:

@@ -21,7 +21,7 @@ municipios:
 # Definición de brote (canal endémico móvil), compartida por todos los modelos.
 # Brote en la semana s del año Y: casos > percentil de la semana s en los años Y-anos_ventana..Y-1.
 target:
-  metodo: percentil          # percentil | bortman (límite superior del IC 95 % de la media geométrica)
+  metodo: bortman            # percentil | bortman (Bortman 1999; Umaña et al. 2026)
   anos_ventana: 5            # Umaña et al. (2026): ventanas cortas (5 años) rinden mejor que 7 o 9
   anos_minimos: 3            # años previos mínimos para calcular el umbral (antes no hay etiqueta)
   percentil: 0.75            # solo para metodo: percentil

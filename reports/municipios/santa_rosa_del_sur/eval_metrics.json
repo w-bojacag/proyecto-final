@@ -43,47 +43,47 @@
         "brier_skill_test": 0.06653606696433956
     },
     "lstm": {
-        "roc_auc_val": 0.35209713024282563,
-        "roc_auc_test": 0.8611428571428572,
-        "pr_auc_test": 0.6525512358084049,
+        "roc_auc_val": 0.2880794701986755,
+        "roc_auc_test": 0.8631428571428571,
+        "pr_auc_test": 0.6689617038114349,
         "prevalencia_test": 0.1830065359477124,
         "roc_auc_por_ano": {
             "2020": NaN,
             "2021": NaN,
-            "2022": 0.10144927536231882,
-            "2023": 0.7261904761904763,
+            "2022": 0.07246376811594203,
+            "2023": 0.7380952380952381,
             "2024": 1.0,
             "2025": 0.7021276595744681
         },
-        "test_sensibilidad": 0.5,
-        "test_especificidad": 0.96,
-        "test_precision": 0.7368421052631579,
-        "test_vp": 14,
-        "test_fp": 5,
-        "test_fn": 14,
-        "test_vn": 120,
+        "test_sensibilidad": 0.5357142857142857,
+        "test_especificidad": 0.912,
+        "test_precision": 0.5769230769230769,
+        "test_vp": 15,
+        "test_fp": 11,
+        "test_fn": 13,
+        "test_vn": 114,
         "test_brotes": 8,
-        "test_brotes_avisados": 1,
-        "test_episodios_alerta": 1,
-        "test_capacidad_deteccion": 0.125,
+        "test_brotes_avisados": 2,
+        "test_episodios_alerta": 2,
+        "test_capacidad_deteccion": 0.25,
         "test_razon_alertas": 1.0,
-        "test_desempeno_evento": 0.5625,
-        "test_ventana_oportunidad_mediana": 18.0,
+        "test_desempeno_evento": 0.625,
+        "test_ventana_oportunidad_mediana": 14.0,
         "ic95_roc_auc_test": [
-            0.6971592391713433,
-            0.9415652235126057
+            0.6927466338197683,
+            0.9436324129746446
         ],
         "ic95_sensibilidad_test": [
-            0.0,
-            0.8095238095238095
+            0.125,
+            0.8183155080213897
         ],
-        "dif_auc_vs_logistica": -0.100770919533435,
+        "dif_auc_vs_logistica": -0.09959984243108537,
         "ic95_dif_auc_vs_logistica": [
-            -0.2722139189437007,
-            0.006239322077390122
+            -0.27658153435278454,
+            0.007951285847594622
         ],
-        "brier_test": 0.10310137263691939,
-        "brier_skill_test": 0.3341088450887738
+        "brier_test": 0.10198038412724651,
+        "brier_skill_test": 0.3413488683227708
     },
     "logistica": {
         "roc_auc_val": 0.5596026490066225,
@@ -127,6 +127,49 @@
         ],
         "brier_test": 0.05933090348479606,
         "brier_skill_test": 0.6168050644432446
+    },
+    "logistica_clima": {
+        "roc_auc_val": 0.5838852097130243,
+        "roc_auc_test": 0.9834285714285714,
+        "pr_auc_test": 0.9298115504830996,
+        "prevalencia_test": 0.1830065359477124,
+        "roc_auc_por_ano": {
+            "2020": NaN,
+            "2021": NaN,
+            "2022": 0.3152173913043478,
+            "2023": 0.9330357142857144,
+            "2024": 1.0,
+            "2025": 1.0
+        },
+        "test_sensibilidad": 0.8214285714285714,
+        "test_especificidad": 0.944,
+        "test_precision": 0.7666666666666667,
+        "test_vp": 23,
+        "test_fp": 7,
+        "test_fn": 5,
+        "test_vn": 118,
+        "test_brotes": 8,
+        "test_brotes_avisados": 5,
+        "test_episodios_alerta": 4,
+        "test_capacidad_deteccion": 0.625,
+        "test_razon_alertas": 1.0,
+        "test_desempeno_evento": 0.8125,
+        "test_ventana_oportunidad_mediana": 5.0,
+        "ic95_roc_auc_test": [
+            0.9579526709808399,
+            0.9966165867567469
+        ],
+        "ic95_sensibilidad_test": [
+            0.625,
+            0.9285714285714286
+        ],
+        "dif_auc_vs_logistica": 0.03326626871287643,
+        "ic95_dif_auc_vs_logistica": [
+            -0.0037609455738110945,
+            0.09675069686411142
+        ],
+        "brier_test": 0.05153403835093342,
+        "brier_skill_test": 0.6671619452091144
     },
     "base_persistencia": {
         "roc_auc_val": 0.6534216335540839,

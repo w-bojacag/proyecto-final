@@ -1,14 +1,20 @@
 # Sistema de alerta temprana de dengue en Bolívar
 
-Predice con 4 semanas de anticipación si habrá brote de dengue en cinco municipios de Bolívar
-(Colombia), a partir de los casos notificados a SIVIGILA y del clima de cada cabecera urbana.
+Herramienta de apoyo al epidemiólogo que **complementa el canal endémico**. Traduce la posición
+de los casos frente al canal en una probabilidad de brote a 4 semanas y en una alerta, para cinco
+municipios de Bolívar (Colombia). Usa los casos notificados a SIVIGILA y el clima de cada cabecera
+urbana.
 
+- **Qué aporta frente al canal:** en 2023–2025 avisa casi tantos brotes como la alerta del propio
+  canal (29 de 42 frente a 33 de 42), con muchas menos falsas alarmas (9 episodios frente a 43). Su
+  probabilidad está mejor calibrada que una probabilidad calculada solo con el canal en 4 de 5
+  municipios.
 - **Municipios:** Cartagena, Magangué, El Carmen de Bolívar, Turbaco y Santa Rosa del Sur, con un
   modelo independiente por municipio.
 - **Brote:** semana en que los casos superan el canal endémico de Bortman (límite superior del IC 95 %
   de la media geométrica de los 5 años anteriores).
-- **Modelo operativo:** regresión logística con 3 variables. XGBoost y LSTM se mantienen como
-  modelos de comparación.
+- **Modelo operativo:** regresión logística con 3 variables. Se compara con XGBoost, LSTM, una
+  variante de la logística con clima y cuatro líneas base, entre ellas la alerta del canal.
 - **Reproducible:** todo el pipeline corre con [DVC](https://dvc.org). Los datos y modelos están en
   [DagsHub](https://dagshub.com/w-bojacag/proyecto-final).
 
@@ -26,8 +32,47 @@ años anteriores (walk-forward).
 | Turbaco | 0,842 [0,75–0,93] | 5 de 12 | 4 |
 
 Un brote cuenta como avisado si hubo una alerta entre 2 semanas antes de su inicio y su inicio.
-Las tablas completas, con XGBoost, LSTM y líneas base, están en
-[reports/resumen_municipios.csv](reports/resumen_municipios.csv).
+Las tablas completas, con los demás modelos, las líneas base y la calibración, están en
+[reports/resumen_municipios.csv](reports/resumen_municipios.csv). Cada municipio tiene además su
+curva de calibración (`reports/municipios/<m>/calibracion.png`).
+
+## Cómo se construye la etiqueta
+
+La etiqueta `target_brote_t4` de la semana *t* vale 1 si en la semana *t+4* hay brote.
+
+1. **Canal endémico de Bortman.** Para la semana *s* del año *Y*, se toman los casos de esa misma
+   semana en los años *Y-5* a *Y-1*. El umbral es el límite superior del IC 95 % de su media
+   geométrica, con un desplazamiento de 0,001 para los ceros (Umaña et al., 2026). La semana 53 se
+   compara con la historia de la semana 52.
+2. **Brote en la semana *s*:** los casos (confirmados y probables, por semana epidemiológica de
+   inicio de síntomas) superan ese umbral. Basta 1 semana; `target.semanas_consecutivas` permite
+   exigir más.
+3. **Etiqueta:** la de la semana *t* es el brote de la semana *t+4*.
+
+Las semanas sin al menos 3 años previos no tienen umbral y no se usan, por eso la serie empieza en
+2010. La comparación entre definiciones (percentil 75 frente a Bortman, 1 o 3 semanas) que
+justifica esta elección está documentada en el historial del proyecto.
+
+## Por qué no hay fuga de datos
+
+Cada predicción usa solo información disponible en la semana en que se emite la alerta.
+
+- **Las variables comparan los casos con el umbral de la semana *t+4*.** Ese umbral solo depende
+  de años anteriores, así que se conoce desde antes. Lo que define el brote y no se conoce, los
+  casos de la semana *t+4*, nunca entra al modelo.
+- **Walk-forward anual.** Cada año se predice con un modelo entrenado solo con los años
+  anteriores. Se excluyen además las últimas 4 semanas, cuya etiqueta cae dentro del año
+  predicho.
+- **Ajustes solo con entrenamiento.** La estandarización y los escaladores se ajustan solo con las
+  semanas de entrenamiento de cada año. El punto de corte de la alerta se calibra con las
+  predicciones del año anterior.
+- **Vacíos de clima.** Se rellenan con el último valor observado, nunca con semanas futuras. Los
+  casos no se imputan: una semana sin casos notificados es un cero real.
+- **Decisiones de diseño con validación.** Los hiperparámetros, el early stopping del LSTM y la
+  definición de brote se eligieron con 2020–2022. La prueba (2023–2025) solo se usa para reportar.
+
+**Supuesto pendiente de validar:** se asume que los casos de la semana *t* se conocen al emitir la
+alerta. SIVIGILA tiene retraso de notificación, así que el desempeño en operación podría ser menor.
 
 ## Instalación
 

@@ -98,9 +98,11 @@ def construir_caracteristicas(rutas):
     # Asegurar orden cronológico estricto
     df = df.sort_values(["ANO", "SEMANA"]).reset_index(drop=True)
 
-    # Imputar vacíos ambientales (p. ej. MODIS LST sin dato por nubosidad) con interpolación
-    # lineal entre semanas vecinas, en lugar de eliminar semanas: un dropna() global borraba
-    # ~270 semanas dispersas y rompía la continuidad de la serie.
+    # Imputar vacíos ambientales (p. ej. MODIS LST sin dato por nubosidad) en lugar de eliminar
+    # semanas: un dropna() global borraba ~270 semanas dispersas y rompía la continuidad.
+    # Solo se usan semanas pasadas (último valor observado): una interpolación entre vecinas
+    # tomaría valores de semanas futuras, que no se conocen al emitir la alerta (fuga de datos).
+    # El relleno hacia atrás solo afecta las primeras semanas de 2007, que no entran al modelo.
     cols_ambientales = [
         "precipitation_mm", "lst_day_c", "lst_night_c", "air_temp_max_c",
         "air_temp_mean_c", "air_temp_min_c", "dewpoint_c", "evi", "ndvi"
@@ -108,7 +110,7 @@ def construir_caracteristicas(rutas):
     cols_ambientales = [col for col in cols_ambientales if col in df.columns]
     print("Vacíos ambientales antes de imputar:")
     print(df[cols_ambientales].isna().sum()[lambda s: s > 0].to_string())
-    df[cols_ambientales] = df[cols_ambientales].interpolate(method="linear", limit_direction="both")
+    df[cols_ambientales] = df[cols_ambientales].ffill().bfill()
 
     # 1. Variables climáticas: rezagos amplios (ciclo biológico del vector: 4 a 12 semanas)
     cols_clima = [

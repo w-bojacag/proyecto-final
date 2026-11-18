@@ -96,7 +96,8 @@ stages:
         - reports/municipios/${key}/xgboost_predicciones.png:
             cache: false
 
-  # Regresión logística con variables relativas al umbral (modelo interpretable).
+  # Regresión logística con variables relativas al umbral (modelo interpretable) y su variante
+  # con clima (logistica_clima), para medir si el clima mejora el modelo operativo.
   train_logistica:
     foreach: ${municipios}
     do:
@@ -116,10 +117,18 @@ stages:
         - models/${key}/walk_forward/logistica
         - reports/municipios/${key}/predicciones_logistica.csv:
             cache: false
+        - models/${key}/logistica_clima.joblib
+        - models/${key}/walk_forward/logistica_clima
+        - reports/municipios/${key}/predicciones_logistica_clima.csv:
+            cache: false
       metrics:
         - reports/municipios/${key}/metrics_logistica.json:
             cache: false
         - reports/municipios/${key}/logistica_coeficientes.json:
+            cache: false
+        - reports/municipios/${key}/metrics_logistica_clima.json:
+            cache: false
+        - reports/municipios/${key}/logistica_clima_coeficientes.json:
             cache: false
 
   # Clasificación de brote T+4 con LSTM (mismas semanas y mismo protocolo que XGBoost).
@@ -168,6 +177,7 @@ stages:
         - reports/municipios/${key}/predicciones_xgboost.csv
         - reports/municipios/${key}/predicciones_lstm.csv
         - reports/municipios/${key}/predicciones_logistica.csv
+        - reports/municipios/${key}/predicciones_logistica_clima.csv
       params:
         - particion
         - target.horizonte

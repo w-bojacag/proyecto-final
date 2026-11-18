@@ -1,15 +1,15 @@
 {
     "xgboost": {
         "roc_auc_val": 0.8834848484848484,
-        "roc_auc_test": 0.8582070707070708,
-        "pr_auc_test": 0.5501045861347935,
+        "roc_auc_test": 0.8582070707070707,
+        "pr_auc_test": 0.5496048904795955,
         "prevalencia_test": 0.21568627450980393,
         "roc_auc_por_ano": {
             "2020": 0.7367886178861789,
             "2021": 0.9190476190476191,
             "2022": 0.9795918367346939,
-            "2023": 0.8226190476190476,
-            "2024": 0.7647058823529411,
+            "2023": 0.8261904761904763,
+            "2024": 0.7622549019607844,
             "2025": 0.9545454545454546
         },
         "test_sensibilidad": 0.8484848484848485,
@@ -27,63 +27,63 @@
         "test_desempeno_evento": 0.7386363636363636,
         "test_ventana_oportunidad_mediana": 6.0,
         "ic95_roc_auc_test": [
-            0.7678631051229022,
-            0.9305025537269855
+            0.7671329207920793,
+            0.9299700245367858
         ],
         "ic95_sensibilidad_test": [
             0.6578759398496241,
             1.0
         ],
-        "dif_auc_vs_logistica": 0.014597298874363908,
+        "dif_auc_vs_logistica": 0.014362724776614924,
         "ic95_dif_auc_vs_logistica": [
-            -0.0351434065934067,
-            0.07203704522722469
+            -0.0348866279069767,
+            0.07017066326530595
         ],
-        "brier_test": 0.14904171019030205,
-        "brier_skill_test": 0.12150805025676914
+        "brier_test": 0.14904120432857618,
+        "brier_skill_test": 0.12151103194191815
     },
     "lstm": {
-        "roc_auc_val": 0.822121212121212,
-        "roc_auc_test": 0.6931818181818181,
-        "pr_auc_test": 0.4698370087204011,
+        "roc_auc_val": 0.7930303030303031,
+        "roc_auc_test": 0.6888888888888889,
+        "pr_auc_test": 0.4418910202611658,
         "prevalencia_test": 0.21568627450980393,
         "roc_auc_por_ano": {
-            "2020": 0.7703252032520326,
-            "2021": 0.8166666666666667,
-            "2022": 0.8095238095238095,
-            "2023": 0.7976190476190477,
-            "2024": 0.6683006535947712,
-            "2025": 0.6318181818181818
+            "2020": 0.725609756097561,
+            "2021": 0.7880952380952381,
+            "2022": 0.7006802721088434,
+            "2023": 0.7547619047619047,
+            "2024": 0.642156862745098,
+            "2025": 0.6590909090909092
         },
-        "test_sensibilidad": 0.2727272727272727,
-        "test_especificidad": 0.9083333333333333,
-        "test_precision": 0.45,
-        "test_vp": 9,
-        "test_fp": 11,
-        "test_fn": 24,
-        "test_vn": 109,
+        "test_sensibilidad": 0.3333333333333333,
+        "test_especificidad": 0.9,
+        "test_precision": 0.4782608695652174,
+        "test_vp": 11,
+        "test_fp": 12,
+        "test_fn": 22,
+        "test_vn": 108,
         "test_brotes": 12,
-        "test_brotes_avisados": 4,
-        "test_episodios_alerta": 8,
-        "test_capacidad_deteccion": 0.3333333333333333,
-        "test_razon_alertas": 0.75,
-        "test_desempeno_evento": 0.5416666666666666,
+        "test_brotes_avisados": 5,
+        "test_episodios_alerta": 10,
+        "test_capacidad_deteccion": 0.4166666666666667,
+        "test_razon_alertas": 0.8,
+        "test_desempeno_evento": 0.6083333333333334,
         "test_ventana_oportunidad_mediana": 4.0,
         "ic95_roc_auc_test": [
-            0.5281720638030905,
-            0.8494959277144148
+            0.5298388526119403,
+            0.8365757934033542
         ],
         "ic95_sensibilidad_test": [
-            0.08571428571428572,
-            0.53125
+            0.13333333333333333,
+            0.6
         ],
-        "dif_auc_vs_logistica": -0.1458842009402718,
+        "dif_auc_vs_logistica": -0.1511863486204325,
         "ic95_dif_auc_vs_logistica": [
-            -0.3242951025938831,
-            0.015017207925263704
+            -0.3189018484615839,
+            0.004614050369826959
         ],
-        "brier_test": 0.15126078937503445,
-        "brier_skill_test": 0.1084282003466932
+        "brier_test": 0.1533136840309655,
+        "brier_skill_test": 0.09632788677270354
     },
     "logistica": {
         "roc_auc_val": 0.9042424242424243,
@@ -127,6 +127,49 @@
         ],
         "brier_test": 0.13526927289698407,
         "brier_skill_test": 0.20268650208126093
+    },
+    "logistica_clima": {
+        "roc_auc_val": 0.9078787878787878,
+        "roc_auc_test": 0.8603535353535354,
+        "pr_auc_test": 0.6057422723532713,
+        "prevalencia_test": 0.21568627450980393,
+        "roc_auc_por_ano": {
+            "2020": 0.7113821138211383,
+            "2021": 0.9642857142857143,
+            "2022": 1.0,
+            "2023": 0.8738095238095238,
+            "2024": 0.7679738562091504,
+            "2025": 0.9454545454545454
+        },
+        "test_sensibilidad": 0.3939393939393939,
+        "test_especificidad": 0.9,
+        "test_precision": 0.52,
+        "test_vp": 13,
+        "test_fp": 12,
+        "test_fn": 20,
+        "test_vn": 108,
+        "test_brotes": 12,
+        "test_brotes_avisados": 5,
+        "test_episodios_alerta": 9,
+        "test_capacidad_deteccion": 0.4166666666666667,
+        "test_razon_alertas": 0.8888888888888888,
+        "test_desempeno_evento": 0.6527777777777778,
+        "test_ventana_oportunidad_mediana": 4.0,
+        "ic95_roc_auc_test": [
+            0.771621538898739,
+            0.938720358059901
+        ],
+        "ic95_sensibilidad_test": [
+            0.16214036617262426,
+            0.6666666666666666
+        ],
+        "dif_auc_vs_logistica": 0.01703188634489894,
+        "ic95_dif_auc_vs_logistica": [
+            -0.0006471940243907542,
+            0.03948667743075644
+        ],
+        "brier_test": 0.12143495476743343,
+        "brier_skill_test": 0.2842296962077858
     },
     "base_persistencia": {
         "roc_auc_val": 0.5642424242424243,

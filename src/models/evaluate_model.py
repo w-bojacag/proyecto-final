@@ -40,7 +40,7 @@ from comun import (  # noqa: E402
     mascara_entrenamiento, municipio_desde_argumentos, resumir_predicciones,
 )
 
-MODELOS = ["xgboost", "lstm", "logistica"]
+MODELOS = ["xgboost", "lstm", "logistica", "logistica_clima"]
 REFERENCIA = "logistica"  # modelo contra el que se comparan los demás
 CASOS = "casos_confirmados_o_probables"
 # Reglas que ya emiten alertas binarias: no se les calibra umbral de Youden.

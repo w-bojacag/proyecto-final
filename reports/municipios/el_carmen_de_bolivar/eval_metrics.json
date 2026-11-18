@@ -43,47 +43,47 @@
         "brier_skill_test": 0.0381091409424138
     },
     "lstm": {
-        "roc_auc_val": 0.954574951330305,
-        "roc_auc_test": 0.9133333333333333,
-        "pr_auc_test": 0.12737905369484315,
+        "roc_auc_val": 0.9649578195976639,
+        "roc_auc_test": 0.9177777777777778,
+        "pr_auc_test": 0.24607843137254903,
         "prevalencia_test": 0.0196078431372549,
         "roc_auc_por_ano": {
-            "2020": 1.0,
+            "2020": 0.9807692307692307,
             "2021": 0.96,
-            "2022": 0.9359375,
+            "2022": 0.975,
             "2023": NaN,
-            "2024": 0.9455782312925171,
+            "2024": 0.9659863945578232,
             "2025": NaN
         },
-        "test_sensibilidad": 0.0,
-        "test_especificidad": 0.96,
-        "test_precision": 0.0,
-        "test_vp": 0,
-        "test_fp": 6,
-        "test_fn": 3,
-        "test_vn": 144,
+        "test_sensibilidad": 0.6666666666666666,
+        "test_especificidad": 0.9466666666666667,
+        "test_precision": 0.2,
+        "test_vp": 2,
+        "test_fp": 8,
+        "test_fn": 1,
+        "test_vn": 142,
         "test_brotes": 2,
-        "test_brotes_avisados": 0,
-        "test_episodios_alerta": 3,
-        "test_capacidad_deteccion": 0.0,
-        "test_razon_alertas": 0.0,
-        "test_desempeno_evento": 0.0,
-        "test_ventana_oportunidad_mediana": NaN,
+        "test_brotes_avisados": 1,
+        "test_episodios_alerta": 4,
+        "test_capacidad_deteccion": 0.5,
+        "test_razon_alertas": 0.25,
+        "test_desempeno_evento": 0.375,
+        "test_ventana_oportunidad_mediana": 4.0,
         "ic95_roc_auc_test": [
-            0.8121539996372211,
-            0.9802631578947368
+            0.6997986577181208,
+            0.993421052631579
         ],
         "ic95_sensibilidad_test": [
             0.0,
-            0.0
+            1.0
         ],
-        "dif_auc_vs_logistica": -0.04830773201120039,
+        "dif_auc_vs_logistica": -0.05993324246034656,
         "ic95_dif_auc_vs_logistica": [
-            -0.14222222222222225,
-            0.013157894736842146
+            -0.25657894736842113,
+            0.020134228187919444
         ],
-        "brier_test": 0.019526084172350647,
-        "brier_skill_test": 0.24426690871887202
+        "brier_test": 0.01873361750907205,
+        "brier_skill_test": 0.2749383570180052
     },
     "logistica": {
         "roc_auc_val": 0.9779364049318624,
@@ -127,6 +127,49 @@
         ],
         "brier_test": 0.03176295402530549,
         "brier_skill_test": -0.22934610042064074
+    },
+    "logistica_clima": {
+        "roc_auc_val": 0.9682024659312135,
+        "roc_auc_test": 0.9688888888888888,
+        "pr_auc_test": 0.3055555555555556,
+        "prevalencia_test": 0.0196078431372549,
+        "roc_auc_por_ano": {
+            "2020": 1.0,
+            "2021": 0.97,
+            "2022": 0.959375,
+            "2023": NaN,
+            "2024": 0.9523809523809524,
+            "2025": NaN
+        },
+        "test_sensibilidad": 1.0,
+        "test_especificidad": 0.94,
+        "test_precision": 0.25,
+        "test_vp": 3,
+        "test_fp": 9,
+        "test_fn": 0,
+        "test_vn": 141,
+        "test_brotes": 2,
+        "test_brotes_avisados": 2,
+        "test_episodios_alerta": 6,
+        "test_capacidad_deteccion": 1.0,
+        "test_razon_alertas": 0.3333333333333333,
+        "test_desempeno_evento": 0.6666666666666666,
+        "test_ventana_oportunidad_mediana": 6.0,
+        "ic95_roc_auc_test": [
+            0.9099546096977604,
+            1.0
+        ],
+        "ic95_sensibilidad_test": [
+            1.0,
+            1.0
+        ],
+        "dif_auc_vs_logistica": 0.005384799045952411,
+        "ic95_dif_auc_vs_logistica": [
+            -1.1102230246251565e-16,
+            0.015906084656084687
+        ],
+        "brier_test": 0.033572024322893926,
+        "brier_skill_test": -0.299363943029213
     },
     "base_persistencia": {
         "roc_auc_val": 0.7198247890979883,

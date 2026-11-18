@@ -38,7 +38,9 @@
         "ic95_dif_auc_vs_logistica": [
             -0.0351434065934067,
             0.07203704522722469
-        ]
+        ],
+        "brier_test": 0.14904171019030205,
+        "brier_skill_test": 0.12150805025676914
     },
     "lstm": {
         "roc_auc_val": 0.822121212121212,
@@ -79,7 +81,9 @@
         "ic95_dif_auc_vs_logistica": [
             -0.3242951025938831,
             0.015017207925263704
-        ]
+        ],
+        "brier_test": 0.15126078937503445,
+        "brier_skill_test": 0.1084282003466932
     },
     "logistica": {
         "roc_auc_val": 0.9042424242424243,
@@ -120,7 +124,9 @@
         "ic95_dif_auc_vs_logistica": [
             0.0,
             0.0
-        ]
+        ],
+        "brier_test": 0.13526927289698407,
+        "brier_skill_test": 0.20268650208126093
     },
     "base_persistencia": {
         "roc_auc_val": 0.5642424242424243,
@@ -161,7 +167,9 @@
         "ic95_dif_auc_vs_logistica": [
             -0.3798223550861677,
             -0.15137703252032528
-        ]
+        ],
+        "brier_test": 0.27450980392156865,
+        "brier_skill_test": -0.6180346599805888
     },
     "base_casos_sobre_umbral": {
         "roc_auc_val": 0.705,
@@ -202,6 +210,94 @@
         "ic95_dif_auc_vs_logistica": [
             -0.024985247293186137,
             0.046345717526942734
-        ]
+        ],
+        "brier_test": NaN,
+        "brier_skill_test": NaN
+    },
+    "canal_alerta": {
+        "roc_auc_val": 0.3904545454545455,
+        "roc_auc_test": 0.49962121212121213,
+        "pr_auc_test": 0.2155582979112391,
+        "prevalencia_test": 0.21568627450980393,
+        "roc_auc_por_ano": {
+            "2020": 0.3567073170731707,
+            "2021": 0.44047619047619047,
+            "2022": 0.6020408163265306,
+            "2023": 0.6023809523809525,
+            "2024": 0.46078431372549017,
+            "2025": 0.36363636363636365
+        },
+        "test_sensibilidad": 0.42424242424242425,
+        "test_especificidad": 0.575,
+        "test_precision": 0.2153846153846154,
+        "test_vp": 14,
+        "test_fp": 51,
+        "test_fn": 19,
+        "test_vn": 69,
+        "test_brotes": 12,
+        "test_brotes_avisados": 9,
+        "test_episodios_alerta": 16,
+        "test_capacidad_deteccion": 0.75,
+        "test_razon_alertas": 0.75,
+        "test_desempeno_evento": 0.75,
+        "test_ventana_oportunidad_mediana": 7.0,
+        "ic95_roc_auc_test": [
+            0.39636686991869924,
+            0.6429527586248316
+        ],
+        "ic95_sensibilidad_test": [
+            0.21951219512195122,
+            0.739402173913042
+        ],
+        "dif_auc_vs_logistica": -0.33583916732681446,
+        "ic95_dif_auc_vs_logistica": [
+            -0.48235318506659963,
+            -0.18433541239462298
+        ],
+        "brier_test": 0.45751633986928103,
+        "brier_skill_test": -1.696724433300981
+    },
+    "canal_probabilidad": {
+        "roc_auc_val": 0.5842424242424242,
+        "roc_auc_test": 0.6016414141414141,
+        "pr_auc_test": 0.27103933348022186,
+        "prevalencia_test": 0.21568627450980393,
+        "roc_auc_por_ano": {
+            "2020": 0.4522357723577236,
+            "2021": 0.592857142857143,
+            "2022": 0.47959183673469385,
+            "2023": 0.42142857142857143,
+            "2024": 0.5302287581699348,
+            "2025": 0.9136363636363636
+        },
+        "test_sensibilidad": 0.09090909090909091,
+        "test_especificidad": 0.825,
+        "test_precision": 0.125,
+        "test_vp": 3,
+        "test_fp": 21,
+        "test_fn": 30,
+        "test_vn": 99,
+        "test_brotes": 12,
+        "test_brotes_avisados": 2,
+        "test_episodios_alerta": 8,
+        "test_capacidad_deteccion": 0.16666666666666666,
+        "test_razon_alertas": 0.375,
+        "test_desempeno_evento": 0.2708333333333333,
+        "test_ventana_oportunidad_mediana": 5.0,
+        "ic95_roc_auc_test": [
+            0.44718126027719046,
+            0.7247499185999183
+        ],
+        "ic95_sensibilidad_test": [
+            0.0,
+            0.18181818181818182
+        ],
+        "dif_auc_vs_logistica": -0.2495433463560962,
+        "ic95_dif_auc_vs_logistica": [
+            -0.4066207365299061,
+            -0.11612235896386433
+        ],
+        "brier_test": 0.1705335490721974,
+        "brier_skill_test": -0.005170631964579453
     }
 }

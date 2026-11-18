@@ -6,6 +6,8 @@ Usa la misma etiqueta, las mismas semanas y el mismo protocolo walk-forward que 
 2. Para cada año Y se entrena con todos los años anteriores durante ese número de épocas y se
    predice Y. Cada predicción es el promedio de varias semillas (la red es inestable con pocas
    secuencias de entrenamiento).
+Las curvas de pérdida de entrenamiento y validación por época del paso 1 se guardan en
+reports/municipios/<municipio>/lstm_curvas_perdida.png y .json, para revisar el sobreajuste.
 El escalado se ajusta solo con los años de entrenamiento de cada iteración. Los modelos y
 escaladores de cada año se guardan en models/<municipio>/walk_forward/.
 
@@ -18,6 +20,10 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import joblib
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -73,6 +79,30 @@ def datos_hasta(df, valores, filas, mascara_train, window_size):
     return X, y, escalador
 
 
+def guardar_curvas_perdida(curvas, n_epocas, rutas):
+    """Pérdida (entropía cruzada binaria) de entrenamiento y validación por época y semilla, en la
+    búsqueda de épocas con early stopping. Si la de validación sube mientras la de entrenamiento
+    baja, la red está memorizando: por eso se para en la mejor época de validación."""
+    with open(rutas.reportes / "lstm_curvas_perdida.json", "w", encoding="utf-8") as f:
+        json.dump({"epocas_elegidas": n_epocas, "curvas": curvas}, f, indent=4)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for i, (semilla, c) in enumerate(curvas.items()):
+        color = f"C{i}"
+        epocas = range(1, len(c["entrenamiento"]) + 1)
+        ax.plot(epocas, c["entrenamiento"], color=color, linestyle="-", label=f"Entrenamiento (semilla {semilla})")
+        ax.plot(epocas, c["validacion"], color=color, linestyle="--", label=f"Validación 2020-2022 (semilla {semilla})")
+    ax.axvline(n_epocas, color="grey", linewidth=1)
+    abajo, arriba = ax.get_ylim()
+    ax.text(n_epocas, abajo + 0.97 * (arriba - abajo), f"épocas usadas: {n_epocas} ", ha="right", va="top", color="grey")
+    ax.set_xlabel("Época")
+    ax.set_ylabel("Pérdida (entropía cruzada binaria)")
+    ax.set_title(f"LSTM: pérdida por época - {rutas.nombre}")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(rutas.reportes / "lstm_curvas_perdida.png", dpi=120)
+    plt.close(fig)
+
+
 def entrenar_modelo_lstm(rutas):
     print("=" * 70)
     print(f"LSTM - ALERTA TEMPRANA DE BROTE T+4 (WALK-FORWARD) - {rutas.nombre}")
@@ -94,14 +124,19 @@ def entrenar_modelo_lstm(rutas):
     tr = m[filas]
     va = (ano_fila > particion["train_end_year"]) & (ano_fila <= particion["val_end_year"])
     X, y, _ = datos_hasta(df, valores, filas, m, w)
-    epocas = []
+    epocas, curvas = [], {}
     for semilla in params["semillas"]:
         modelo = construir_modelo(params, w, X.shape[2], semilla)
         parada = EarlyStopping(monitor="val_loss", patience=params["patience"], restore_best_weights=True)
         hist = modelo.fit(X[tr], y[tr], validation_data=(X[va], y[va]), epochs=params["max_epochs"],
                           batch_size=params["batch_size"], callbacks=[parada], verbose=0)
         epocas.append(int(np.argmin(hist.history["val_loss"])) + 1)
+        curvas[str(semilla)] = {
+            "entrenamiento": [float(v) for v in hist.history["loss"]],
+            "validacion": [float(v) for v in hist.history["val_loss"]],
+        }
     n_epocas = max(1, int(round(np.median(epocas))))
+    guardar_curvas_perdida(curvas, n_epocas, rutas)
     print(f"Épocas por semilla (early stopping): {epocas} -> se usan {n_epocas}")
 
     # 2. Walk-forward anual

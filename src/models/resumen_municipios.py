@@ -18,7 +18,7 @@ COLUMNAS = [
     "test_sensibilidad", "test_especificidad", "test_precision",
     "test_vp", "test_fp", "test_fn", "test_vn",
     "test_brotes", "test_brotes_avisados", "test_capacidad_deteccion", "test_razon_alertas",
-    "test_desempeno_evento", "test_ventana_oportunidad_mediana",
+    "test_desempeno_evento", "test_ventana_oportunidad_mediana", "brier_test", "brier_skill_test",
 ]
 
 

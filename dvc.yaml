@@ -144,12 +144,18 @@ stages:
         - models/${key}/walk_forward/lstm
         - reports/municipios/${key}/predicciones_lstm.csv:
             cache: false
+        - reports/municipios/${key}/lstm_curvas_perdida.json:
+            cache: false
       metrics:
         - reports/municipios/${key}/metrics_lstm.json:
             cache: false
+      plots:
+        - reports/municipios/${key}/lstm_curvas_perdida.png:
+            cache: false
 
-  # Evaluación clínica comparativa (XGBoost, LSTM, logística y líneas base) con umbral de
-  # Youden dinámico e intervalos de confianza por bootstrap de bloques.
+  # Evaluación comparativa (XGBoost, LSTM, logística, líneas base y alerta del canal endémico)
+  # con umbral de Youden dinámico, intervalos por bootstrap de bloques, métricas por brote y
+  # calibración de la probabilidad.
   evaluate:
     foreach: ${municipios}
     do:
@@ -164,10 +170,14 @@ stages:
         - reports/municipios/${key}/predicciones_logistica.csv
       params:
         - particion
+        - target.horizonte
         - eventos
         - evaluate
       metrics:
         - reports/municipios/${key}/eval_metrics.json:
+            cache: false
+      plots:
+        - reports/municipios/${key}/calibracion.png:
             cache: false
 
   # Tabla comparativa de todos los municipios.

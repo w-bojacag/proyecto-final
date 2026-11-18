@@ -26,6 +26,9 @@ def umbral_movil(df, col, params):
       (t de Student) de la media geométrica. Los ceros se manejan sumando un desplazamiento
       mínimo (0,001), que según Umaña et al. (2026) rinde mejor que sumar 1.
 
+    Devuelve el umbral (límite superior) y la línea central del canal: la media geométrica en
+    Bortman y la mediana en el método de percentil. Entre ambas está la zona de alerta.
+
     - Si hay menos de `anos_minimos` años previos, el umbral queda vacío y esas semanas no se
       usan (antes se completaban con el percentil de toda la serie, que incluye años futuros).
     - La semana 53 existe solo en algunos años: se compara con la historia de la semana 52.
@@ -37,6 +40,7 @@ def umbral_movil(df, col, params):
     tabla = tabla.reindex(range(tabla.index.min(), tabla.index.max() + 1))
     if params["metodo"] == "percentil":
         umbrales = tabla.rolling(ventana, min_periods=minimo).quantile(params["percentil"]).shift(1)
+        centros = tabla.rolling(ventana, min_periods=minimo).quantile(0.5).shift(1)
     elif params["metodo"] == "bortman":
         desplazamiento = params["bortman_desplazamiento"]
         logs = np.log(tabla + desplazamiento)
@@ -45,14 +49,13 @@ def umbral_movil(df, col, params):
         n = logs.rolling(ventana, min_periods=minimo).count()
         t = pd.DataFrame(stats.t.ppf(0.975, n - 1), index=n.index, columns=n.columns)
         umbrales = (np.exp(media + t * desv / np.sqrt(n)) - desplazamiento).clip(lower=0).shift(1)
+        centros = (np.exp(media) - desplazamiento).clip(lower=0).shift(1)
     else:
         raise ValueError(f"Método de canal endémico desconocido: {params['metodo']}")
-    largo = umbrales.stack().rename("umbral").reset_index()
-    largo.columns = ["ANO", "SEMANA_REF", "umbral"]
-    return (
-        df[["ANO"]].assign(SEMANA_REF=semana.values)
-        .merge(largo, on=["ANO", "SEMANA_REF"], how="left")["umbral"].values
-    )
+    largo = pd.DataFrame({"umbral": umbrales.stack(), "centro": centros.stack()}).reset_index()
+    largo.columns = ["ANO", "SEMANA_REF", "umbral", "centro"]
+    unido = df[["ANO"]].assign(SEMANA_REF=semana.values).merge(largo, on=["ANO", "SEMANA_REF"], how="left")
+    return unido["umbral"].values, unido["centro"].values
 
 
 def agregar_etiqueta(df, params, col="casos_confirmados_o_probables"):
@@ -65,7 +68,7 @@ def agregar_etiqueta(df, params, col="casos_confirmados_o_probables"):
     """
     h = params["horizonte"]
     df = df.copy()
-    df["umbral_brote"] = umbral_movil(df, col, params)
+    df["umbral_brote"], df["centro_canal"] = umbral_movil(df, col, params)
     supera = (df[col] > df["umbral_brote"]).astype(int)
     k = params["semanas_consecutivas"]
     df["es_brote_actual"] = (supera.rolling(k, min_periods=k).min() == 1).astype(int)

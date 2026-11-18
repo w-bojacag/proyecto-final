@@ -21,9 +21,9 @@ TARGET = "target_brote_t4"
 # - identificadores de tiempo;
 # - conteos de la semana t en valor absoluto (se usan en forma relativa al umbral, porque su
 #   escala cambió mucho entre la fase endémica y la hiperendémica);
-# - umbrales absolutos y la etiqueta.
+# - umbrales absolutos, la línea central del canal (solo la usan las líneas base) y la etiqueta.
 COLUMNAS_NO_PREDICTORAS = {
-    "ANO", "SEMANA", "umbral_brote", "umbral_objetivo", "es_brote_actual", TARGET,
+    "ANO", "SEMANA", "umbral_brote", "umbral_objetivo", "centro_canal", "es_brote_actual", TARGET,
 }
 
 
@@ -74,9 +74,12 @@ def umbral_youden(y, p):
     return float(umbral if np.isfinite(umbral) else np.max(p) + 1e-9)
 
 
-def aplicar_umbral_dinamico(pred):
+def aplicar_umbral_dinamico(pred, umbral_fijo=None):
     """Para cada año, el umbral de decisión se calibra con las predicciones fuera de muestra
-    del año anterior (información disponible al momento de emitir la alerta)."""
+    del año anterior (información disponible al momento de emitir la alerta).
+
+    `umbral_fijo` sirve para reglas que ya emiten alertas binarias (la alerta del canal
+    endémico): se usa ese umbral en lugar de Youden, sobre las mismas semanas."""
     pred = pred.sort_values(["ANO", "SEMANA"]).copy()
     pred["umbral_decision"] = np.nan
     anos = sorted(pred["ANO"].unique())
@@ -84,7 +87,8 @@ def aplicar_umbral_dinamico(pred):
         prev = pred[pred["ANO"] == anterior]
         if prev["y"].nunique() < 2:  # año sin ambas clases: se usan todos los años previos
             prev = pred[pred["ANO"] <= anterior]
-        pred.loc[pred["ANO"] == actual, "umbral_decision"] = umbral_youden(prev["y"], prev["prob"])
+        umbral = umbral_fijo if umbral_fijo is not None else umbral_youden(prev["y"], prev["prob"])
+        pred.loc[pred["ANO"] == actual, "umbral_decision"] = umbral
     pred["alerta"] = (pred["prob"] >= pred["umbral_decision"]).astype(int)
     return pred.dropna(subset=["umbral_decision"])
 
@@ -93,9 +97,9 @@ def _auc(y, p):
     return float(roc_auc_score(y, p)) if len(np.unique(y)) == 2 else float("nan")
 
 
-def resumir_predicciones(pred, particion):
+def resumir_predicciones(pred, particion, umbral_fijo=None):
     """Métricas de un modelo a partir de sus predicciones fuera de muestra (ANO, SEMANA, y, prob)."""
-    pred = aplicar_umbral_dinamico(pred)
+    pred = aplicar_umbral_dinamico(pred, umbral_fijo)
     val = pred[pred["ANO"] <= particion["val_end_year"]]
     test = pred[pred["ANO"] > particion["val_end_year"]]
     tn, fp, fn, tp = confusion_matrix(test["y"], test["alerta"], labels=[0, 1]).ravel()

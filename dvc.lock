@@ -16,7 +16,8 @@ stages:
       hash: md5
       md5: ab0dfa692da05f8dc9f4662368300fc0
       size: 1186215
-    - path: data/processed/serie_semanal_top5_bolivar_confirmados_y_probables.csv
+    - path: 
+        data/processed/serie_semanal_top5_bolivar_confirmados_y_probables.csv
       hash: md5
       md5: 1d0ba077b67ba09e84babd334050a400
       size: 88363
@@ -57,8 +58,8 @@ stages:
       md5: 00d774bd5591d92c196eab0f9f7b5240
       size: 1059417
   cruce@cartagena:
-    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py --municipio
-      cartagena
+    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py 
+      --municipio cartagena
     deps:
     - path: data/processed/dengue_bolivar_unificado.csv
       hash: md5
@@ -87,7 +88,8 @@ stages:
       md5: e8b128952df5a4412d698728e5571aef
       size: 186997
   features@cartagena:
-    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio cartagena
+    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio 
+      cartagena
     deps:
     - path: data/processed/municipios/cartagena/cruce_semanal.csv
       hash: md5
@@ -95,8 +97,8 @@ stages:
       size: 186997
     - path: src/features/build_features.py
       hash: md5
-      md5: 8818c817efd91afc5cf8f1b2aaacd01f
-      size: 7379
+      md5: a27ca7ea91412f6b4bc9f9a65e4454db
+      size: 9754
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -104,42 +106,54 @@ stages:
     params:
       params.yaml:
         target:
+          metodo: bortman
           anos_ventana: 5
           anos_minimos: 3
           percentil: 0.75
+          bortman_desplazamiento: 0.001
+          semanas_consecutivas: 1
           horizonte: 4
     outs:
     - path: data/processed/municipios/cartagena/caracteristicas.csv
       hash: md5
-      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
-      size: 540858
+      md5: 992de762e8c54f5ff6ebefd061f1333b
+      size: 590429
   train_logistica@cartagena:
-    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio cartagena
+    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio 
+      cartagena
     deps:
     - path: data/processed/municipios/cartagena/caracteristicas.csv
       hash: md5
-      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
-      size: 540858
+      md5: 992de762e8c54f5ff6ebefd061f1333b
+      size: 590429
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_logistica.py
       hash: md5
-      md5: d668453f6bf08e8b31accc8973c0587a
-      size: 4409
+      md5: 9c63e3748c48f6f1b16b5dfbe1a96c05
+      size: 5968
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         logistica:
           C: 1.0
           variables:
           - ratio_casos_umbral_objetivo
           - ratio_roll4_umbral_objetivo
           - exceso_actual
+          variables_clima:
+          - precipitation_mm_roll_mean_8
+          - air_temp_mean_c_roll_mean_8
+          - lst_day_c_roll_mean_8
+          - dewpoint_c_roll_mean_8
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -147,36 +161,58 @@ stages:
     outs:
     - path: models/cartagena/logistica.joblib
       hash: md5
-      md5: be98ab832cc7296d8e2993d2771464a7
+      md5: 091a940a092139aeb4dbe45e0eedf74e
       size: 2241
+    - path: models/cartagena/logistica_clima.joblib
+      hash: md5
+      md5: 20462969b67b44efb3d56959dfcbb6a7
+      size: 4090
     - path: models/cartagena/walk_forward/logistica
       hash: md5
-      md5: 6b7ab8eb322a188fc7726a94f8f8672f.dir
+      md5: 8adf212e3b5e0ea8353f9148276d74e5.dir
       size: 15687
       nfiles: 7
+    - path: models/cartagena/walk_forward/logistica_clima
+      hash: md5
+      md5: b89b89bd09f4bf126ee4eaa53eee79e8.dir
+      size: 28630
+      nfiles: 7
+    - path: reports/municipios/cartagena/logistica_clima_coeficientes.json
+      hash: md5
+      md5: c80b8822a1e27da61f3434846d33eef3
+      size: 1362
     - path: reports/municipios/cartagena/logistica_coeficientes.json
       hash: md5
-      md5: e95d9a7feb3528ffe59f4d1bb7027f94
-      size: 616
+      md5: 87ec5b6a7690bc037c4d8d04a0f4faed
+      size: 617
     - path: reports/municipios/cartagena/metrics_logistica.json
       hash: md5
-      md5: e0cb0b507b78ac278bad8767c1776bfb
-      size: 379
+      md5: ed11963e9d64656548a951fe9fb59b1a
+      size: 320
+    - path: reports/municipios/cartagena/metrics_logistica_clima.json
+      hash: md5
+      md5: a36f72f591fb4226deab9b260d511924
+      size: 349
     - path: reports/municipios/cartagena/predicciones_logistica.csv
       hash: md5
-      md5: 4a04420f5d26183967647b54763ab1b8
-      size: 10862
+      md5: 7585647f8044e40f891cc866ff4ffcdb
+      size: 11210
+    - path: reports/municipios/cartagena/predicciones_logistica_clima.csv
+      hash: md5
+      md5: a927433646e1976737341a933469341e
+      size: 11253
   train@cartagena:
-    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio cartagena
+    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio 
+      cartagena
     deps:
     - path: data/processed/municipios/cartagena/caracteristicas.csv
       hash: md5
-      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
-      size: 540858
+      md5: 992de762e8c54f5ff6ebefd061f1333b
+      size: 590429
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_xgboost.py
       hash: md5
       md5: 2cba974a6709650c98887ec37a51201a
@@ -187,6 +223,9 @@ stages:
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -204,50 +243,53 @@ stages:
     outs:
     - path: models/cartagena/walk_forward/xgboost
       hash: md5
-      md5: 373b35509226f3451d266dbfdc7d9943.dir
-      size: 933016
+      md5: b21ea42248b4b5b07927e48bd6357e3d.dir
+      size: 887765
       nfiles: 7
     - path: models/cartagena/xgboost.json
       hash: md5
-      md5: 0b97f40ce07e6fa80df2564a47c0b4cb
-      size: 134561
+      md5: 82b31a2b66b4dbe612312089152fa946
+      size: 132893
     - path: reports/municipios/cartagena/metrics_xgboost.json
       hash: md5
-      md5: b2efa7e3314d3c58453ec61da6e9a9d4
+      md5: a0628de59424aef5b62e8e6b2f8856c1
       size: 366
     - path: reports/municipios/cartagena/predicciones_xgboost.csv
       hash: md5
-      md5: 130f6f1874b7066c0bed802001a2e5c3
-      size: 7739
+      md5: 56713ff57d1dd31797b2782343a705a0
+      size: 7969
     - path: reports/municipios/cartagena/xgboost_predicciones.png
       hash: md5
-      md5: 79ba9d815e7d19f6f5ff81db37fa18f0
-      size: 188800
+      md5: 8ba8f1b25b9d64037de6c99789489e27
+      size: 159747
   train_lstm@cartagena:
     cmd: .venv\Scripts\python.exe src/models/train_lstm.py --municipio cartagena
     deps:
     - path: data/processed/municipios/cartagena/caracteristicas.csv
       hash: md5
-      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
-      size: 540858
+      md5: 992de762e8c54f5ff6ebefd061f1333b
+      size: 590429
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/data_generator.py
       hash: md5
       md5: 423bb4c04737de937476d74200cb4af9
       size: 851
     - path: src/models/train_lstm.py
       hash: md5
-      md5: ae5d50fd077702e234a3a559a789f908
-      size: 7075
+      md5: 1b211d8d11f894ff630a20865785a9a2
+      size: 9056
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         lstm:
           window_size: 12
           max_epochs: 100
@@ -268,52 +310,65 @@ stages:
     outs:
     - path: models/cartagena/lstm.keras
       hash: md5
-      md5: 12f6d2ce1d0df171a1b597fad342b7dd
+      md5: 85c429f7daa6610345c6209fcd2ad94c
       size: 49246
     - path: models/cartagena/lstm_escalador.joblib
       hash: md5
-      md5: f837355d98a48335e680e0974e2349e1
+      md5: e830d26e377a05a93be96be3b5cd295e
       size: 871
     - path: models/cartagena/walk_forward/lstm
       hash: md5
-      md5: fe3d143f6f30f57ed9adae7ac13e260f.dir
+      md5: 5832f32585a5285153088179ec51b6c3.dir
       size: 1040221
       nfiles: 28
+    - path: reports/municipios/cartagena/lstm_curvas_perdida.json
+      hash: md5
+      md5: 52f18ceb5ba391735ff90cb09383681d
+      size: 9633
+    - path: reports/municipios/cartagena/lstm_curvas_perdida.png
+      hash: md5
+      md5: 2f0502c8fc55a8a165792373a663f349
+      size: 88283
     - path: reports/municipios/cartagena/metrics_lstm.json
       hash: md5
-      md5: 04308750ec7e62d87cddfef264975d73
-      size: 386
+      md5: 838f5041f9c0e4273083209f311f3967
+      size: 383
     - path: reports/municipios/cartagena/predicciones_lstm.csv
       hash: md5
-      md5: 409cb5b3b30a8f815a125b7cc3a77ace
-      size: 7740
+      md5: 3b27de5d87ef721b4da566836d932787
+      size: 7997
   evaluate@cartagena:
-    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio cartagena
+    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio 
+      cartagena
     deps:
     - path: data/processed/municipios/cartagena/caracteristicas.csv
       hash: md5
-      md5: 3d06c6f30eb3d7a2b2d37ac223538f7b
-      size: 540858
+      md5: 992de762e8c54f5ff6ebefd061f1333b
+      size: 590429
     - path: reports/municipios/cartagena/predicciones_logistica.csv
       hash: md5
-      md5: 4a04420f5d26183967647b54763ab1b8
-      size: 10862
+      md5: 7585647f8044e40f891cc866ff4ffcdb
+      size: 11210
+    - path: reports/municipios/cartagena/predicciones_logistica_clima.csv
+      hash: md5
+      md5: a927433646e1976737341a933469341e
+      size: 11253
     - path: reports/municipios/cartagena/predicciones_lstm.csv
       hash: md5
-      md5: 409cb5b3b30a8f815a125b7cc3a77ace
-      size: 7740
+      md5: 3b27de5d87ef721b4da566836d932787
+      size: 7997
     - path: reports/municipios/cartagena/predicciones_xgboost.csv
       hash: md5
-      md5: 130f6f1874b7066c0bed802001a2e5c3
-      size: 7739
+      md5: 56713ff57d1dd31797b2782343a705a0
+      size: 7969
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: e959fd8264b9938115bfd7907b05bf34
-      size: 5887
+      md5: fe032dd652785faee0b392ddffe9502c
+      size: 11788
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -324,14 +379,22 @@ stages:
           tamano_bloque: 8
           repeticiones: 2000
           semilla: 42
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
+        target.horizonte: 4
     outs:
+    - path: reports/municipios/cartagena/calibracion.png
+      hash: md5
+      md5: 4db5c2eb820a4882d5236b9518b160f0
+      size: 72783
     - path: reports/municipios/cartagena/eval_metrics.json
       hash: md5
-      md5: a8c1a92a906ce2b3b47637f021659cdd
-      size: 5587
+      md5: b75c03a682688763dbe28eff56db43b9
+      size: 11760
   clima@magangue:
     cmd: .venv\Scripts\python.exe src/clima.py --municipio magangue
     deps:
@@ -397,8 +460,8 @@ stages:
       md5: 8fc96b5f8bf9979abd9432fa97d79416
       size: 1015614
   cruce@magangue:
-    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py --municipio
-      magangue
+    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py 
+      --municipio magangue
     deps:
     - path: data/processed/dengue_bolivar_unificado.csv
       hash: md5
@@ -427,8 +490,8 @@ stages:
       md5: 1532d3cf36ea2ced3073f5c76dc6be11
       size: 182093
   cruce@el_carmen_de_bolivar:
-    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py --municipio
-      el_carmen_de_bolivar
+    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py 
+      --municipio el_carmen_de_bolivar
     deps:
     - path: data/processed/dengue_bolivar_unificado.csv
       hash: md5
@@ -457,8 +520,8 @@ stages:
       md5: ed8dee05a14032cd1f81d0dc90e95928
       size: 181120
   cruce@turbaco:
-    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py --municipio
-      turbaco
+    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py 
+      --municipio turbaco
     deps:
     - path: data/processed/dengue_bolivar_unificado.csv
       hash: md5
@@ -487,8 +550,8 @@ stages:
       md5: d6a11cffe03ac1eeac9b32f2675f5c12
       size: 182087
   cruce@santa_rosa_del_sur:
-    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py --municipio
-      santa_rosa_del_sur
+    cmd: .venv\Scripts\python.exe src/cruce_ambiental_epidemiologico.py 
+      --municipio santa_rosa_del_sur
     deps:
     - path: data/processed/dengue_bolivar_unificado.csv
       hash: md5
@@ -517,7 +580,8 @@ stages:
       md5: 0573997da7ea3048f35ec77912dc5790
       size: 177955
   features@magangue:
-    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio magangue
+    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio 
+      magangue
     deps:
     - path: data/processed/municipios/magangue/cruce_semanal.csv
       hash: md5
@@ -525,8 +589,8 @@ stages:
       size: 182093
     - path: src/features/build_features.py
       hash: md5
-      md5: 8818c817efd91afc5cf8f1b2aaacd01f
-      size: 7379
+      md5: a27ca7ea91412f6b4bc9f9a65e4454db
+      size: 9754
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -534,17 +598,21 @@ stages:
     params:
       params.yaml:
         target:
+          metodo: bortman
           anos_ventana: 5
           anos_minimos: 3
           percentil: 0.75
+          bortman_desplazamiento: 0.001
+          semanas_consecutivas: 1
           horizonte: 4
     outs:
     - path: data/processed/municipios/magangue/caracteristicas.csv
       hash: md5
-      md5: 89d14c29b2da098153b38bfc1b3f9351
-      size: 522446
+      md5: 0d9587dab7009934790b2a1176cb59fc
+      size: 582120
   features@el_carmen_de_bolivar:
-    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio el_carmen_de_bolivar
+    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio 
+      el_carmen_de_bolivar
     deps:
     - path: data/processed/municipios/el_carmen_de_bolivar/cruce_semanal.csv
       hash: md5
@@ -552,8 +620,8 @@ stages:
       size: 181120
     - path: src/features/build_features.py
       hash: md5
-      md5: 8818c817efd91afc5cf8f1b2aaacd01f
-      size: 7379
+      md5: a27ca7ea91412f6b4bc9f9a65e4454db
+      size: 9754
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -561,17 +629,21 @@ stages:
     params:
       params.yaml:
         target:
+          metodo: bortman
           anos_ventana: 5
           anos_minimos: 3
           percentil: 0.75
+          bortman_desplazamiento: 0.001
+          semanas_consecutivas: 1
           horizonte: 4
     outs:
     - path: data/processed/municipios/el_carmen_de_bolivar/caracteristicas.csv
       hash: md5
-      md5: f8a67f1dc56f9492da4cc0609569acfc
-      size: 520841
+      md5: e866b18d3937bef36ab660c496cf2e66
+      size: 580311
   features@turbaco:
-    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio turbaco
+    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio 
+      turbaco
     deps:
     - path: data/processed/municipios/turbaco/cruce_semanal.csv
       hash: md5
@@ -579,8 +651,8 @@ stages:
       size: 182087
     - path: src/features/build_features.py
       hash: md5
-      md5: 8818c817efd91afc5cf8f1b2aaacd01f
-      size: 7379
+      md5: a27ca7ea91412f6b4bc9f9a65e4454db
+      size: 9754
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -588,17 +660,21 @@ stages:
     params:
       params.yaml:
         target:
+          metodo: bortman
           anos_ventana: 5
           anos_minimos: 3
           percentil: 0.75
+          bortman_desplazamiento: 0.001
+          semanas_consecutivas: 1
           horizonte: 4
     outs:
     - path: data/processed/municipios/turbaco/caracteristicas.csv
       hash: md5
-      md5: 523e52a936be7c3a8a669dbf43783c8c
-      size: 511451
+      md5: 3bd8af0d07e18c591acad7f09ee05bb8
+      size: 571354
   features@santa_rosa_del_sur:
-    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio santa_rosa_del_sur
+    cmd: .venv\Scripts\python.exe src/features/build_features.py --municipio 
+      santa_rosa_del_sur
     deps:
     - path: data/processed/municipios/santa_rosa_del_sur/cruce_semanal.csv
       hash: md5
@@ -606,8 +682,8 @@ stages:
       size: 177955
     - path: src/features/build_features.py
       hash: md5
-      md5: 8818c817efd91afc5cf8f1b2aaacd01f
-      size: 7379
+      md5: a27ca7ea91412f6b4bc9f9a65e4454db
+      size: 9754
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -615,26 +691,30 @@ stages:
     params:
       params.yaml:
         target:
+          metodo: bortman
           anos_ventana: 5
           anos_minimos: 3
           percentil: 0.75
+          bortman_desplazamiento: 0.001
+          semanas_consecutivas: 1
           horizonte: 4
     outs:
     - path: data/processed/municipios/santa_rosa_del_sur/caracteristicas.csv
       hash: md5
-      md5: 96ad5132ad4a8a227de2c7a68545212f
-      size: 519001
+      md5: e18d7742648968986b28260840468b40
+      size: 576285
   train@magangue:
-    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio magangue
+    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio 
+      magangue
     deps:
     - path: data/processed/municipios/magangue/caracteristicas.csv
       hash: md5
-      md5: 89d14c29b2da098153b38bfc1b3f9351
-      size: 522446
+      md5: 0d9587dab7009934790b2a1176cb59fc
+      size: 582120
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_xgboost.py
       hash: md5
       md5: 2cba974a6709650c98887ec37a51201a
@@ -645,6 +725,9 @@ stages:
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -662,36 +745,37 @@ stages:
     outs:
     - path: models/magangue/walk_forward/xgboost
       hash: md5
-      md5: 918f5d60b9d2e20408c81c92b6b0fcc1.dir
-      size: 928262
+      md5: eda2d3308e13647b3d36e24a6866bb7f.dir
+      size: 774326
       nfiles: 7
     - path: models/magangue/xgboost.json
       hash: md5
-      md5: ba4693f41eb8b1de9d557afcb4d74582
-      size: 133259
+      md5: 9c4ee8957031723c955df2450e989999
+      size: 129972
     - path: reports/municipios/magangue/metrics_xgboost.json
       hash: md5
-      md5: 7037cca47912226153b84f30df77434e
-      size: 365
+      md5: 2b4417d3e7ef747b4083baf74a1862cc
+      size: 304
     - path: reports/municipios/magangue/predicciones_xgboost.csv
       hash: md5
-      md5: dd3add5b822107aae61b68c775adbc4b
-      size: 7801
+      md5: 94477a1e5be4b74795eaf1a0e061eac9
+      size: 8000
     - path: reports/municipios/magangue/xgboost_predicciones.png
       hash: md5
-      md5: f7e8670fa820f4eefcf7d938e07fdb0e
-      size: 167739
+      md5: 90fe2ef948f32b0d8d6458ef73dcfc3d
+      size: 149961
   train@el_carmen_de_bolivar:
-    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio el_carmen_de_bolivar
+    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio 
+      el_carmen_de_bolivar
     deps:
     - path: data/processed/municipios/el_carmen_de_bolivar/caracteristicas.csv
       hash: md5
-      md5: f8a67f1dc56f9492da4cc0609569acfc
-      size: 520841
+      md5: e866b18d3937bef36ab660c496cf2e66
+      size: 580311
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_xgboost.py
       hash: md5
       md5: 2cba974a6709650c98887ec37a51201a
@@ -702,6 +786,9 @@ stages:
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -719,36 +806,37 @@ stages:
     outs:
     - path: models/el_carmen_de_bolivar/walk_forward/xgboost
       hash: md5
-      md5: 0e1a0b9484967fd81c754380f128d13a.dir
-      size: 922121
+      md5: 532d4be25cf056a5523b538d1bca4675.dir
+      size: 798274
       nfiles: 7
     - path: models/el_carmen_de_bolivar/xgboost.json
       hash: md5
-      md5: 814d19f6a55e8e0f411d9132851ad5e0
-      size: 132620
+      md5: 74922a2875ff46a052f750e488acb0b5
+      size: 127231
     - path: reports/municipios/el_carmen_de_bolivar/metrics_xgboost.json
       hash: md5
-      md5: 99ce4e15f21a7691c26e576f03ad7ecc
-      size: 371
+      md5: 20b71cad324a765f45e846b3b6a4b1fe
+      size: 311
     - path: reports/municipios/el_carmen_de_bolivar/predicciones_xgboost.csv
       hash: md5
-      md5: 029abf96a31fd2e04edf9e67d600d952
-      size: 7783
+      md5: 512c4fa51efefd4add28937427a3f6f1
+      size: 7890
     - path: reports/municipios/el_carmen_de_bolivar/xgboost_predicciones.png
       hash: md5
-      md5: 51b0c9266482c4270a70f52941783bda
-      size: 176256
+      md5: a1376ff47a28ecc1545d65f157c7b3a8
+      size: 140572
   train@turbaco:
-    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio turbaco
+    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio 
+      turbaco
     deps:
     - path: data/processed/municipios/turbaco/caracteristicas.csv
       hash: md5
-      md5: 523e52a936be7c3a8a669dbf43783c8c
-      size: 511451
+      md5: 3bd8af0d07e18c591acad7f09ee05bb8
+      size: 571354
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_xgboost.py
       hash: md5
       md5: 2cba974a6709650c98887ec37a51201a
@@ -759,6 +847,9 @@ stages:
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -776,36 +867,37 @@ stages:
     outs:
     - path: models/turbaco/walk_forward/xgboost
       hash: md5
-      md5: b74cf439b885d94f7f497284ba20f1ec.dir
-      size: 928172
+      md5: df7809f6573e214a5b1cdcae4006bdb0.dir
+      size: 919030
       nfiles: 7
     - path: models/turbaco/xgboost.json
       hash: md5
-      md5: d375543b46eb102cebb97ec3d973d8ea
-      size: 133643
+      md5: cd7de22cf934497013dbf887e4af93d6
+      size: 131931
     - path: reports/municipios/turbaco/metrics_xgboost.json
       hash: md5
-      md5: da4ac903d4798726e0d6bd647cf651a7
-      size: 362
+      md5: 8b7768051516fc590ec891cbcc2f7cdd
+      size: 379
     - path: reports/municipios/turbaco/predicciones_xgboost.csv
       hash: md5
-      md5: a1918bf7812de3747bec69f711acd58e
-      size: 7789
+      md5: 58e94df218aaaa6ec189d7cba2189242
+      size: 7837
     - path: reports/municipios/turbaco/xgboost_predicciones.png
       hash: md5
-      md5: 8d582998c5d7e11464fda4b1b6973d7b
-      size: 180005
+      md5: 7ca7ecb8d48e6fa03d9de3123d9fd1eb
+      size: 181394
   train@santa_rosa_del_sur:
-    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio santa_rosa_del_sur
+    cmd: .venv\Scripts\python.exe src/models/train_xgboost.py --municipio 
+      santa_rosa_del_sur
     deps:
     - path: data/processed/municipios/santa_rosa_del_sur/caracteristicas.csv
       hash: md5
-      md5: 96ad5132ad4a8a227de2c7a68545212f
-      size: 519001
+      md5: e18d7742648968986b28260840468b40
+      size: 576285
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_xgboost.py
       hash: md5
       md5: 2cba974a6709650c98887ec37a51201a
@@ -816,6 +908,9 @@ stages:
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -833,52 +928,61 @@ stages:
     outs:
     - path: models/santa_rosa_del_sur/walk_forward/xgboost
       hash: md5
-      md5: 6586df72bf60ffa485ba81685c095e17.dir
-      size: 927303
+      md5: a1b2d10cce1cd18e4ee4a31fc4d95e16.dir
+      size: 919016
       nfiles: 7
     - path: models/santa_rosa_del_sur/xgboost.json
       hash: md5
-      md5: 58ac861f39ed1a9be5bb340a648025db
-      size: 133700
+      md5: 8f86525381153010d68641a222649ae9
+      size: 132922
     - path: reports/municipios/santa_rosa_del_sur/metrics_xgboost.json
       hash: md5
-      md5: a562944e4d4f7fb0d0488c5683b30f2f
-      size: 351
+      md5: ddb18cd499f2423c747a63015201df2d
+      size: 321
     - path: reports/municipios/santa_rosa_del_sur/predicciones_xgboost.csv
       hash: md5
-      md5: 8a840c8e8d4cda1552c11b1a84a2ae61
-      size: 7836
+      md5: ce6c19c4147df2cc3edf85a40a31ce5c
+      size: 7817
     - path: reports/municipios/santa_rosa_del_sur/xgboost_predicciones.png
       hash: md5
-      md5: 4d0569458026a63ea6adaaefd8c42d3d
-      size: 184014
+      md5: 173cb0da58209a516aa0e3515f71387f
+      size: 160398
   train_logistica@magangue:
-    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio magangue
+    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio 
+      magangue
     deps:
     - path: data/processed/municipios/magangue/caracteristicas.csv
       hash: md5
-      md5: 89d14c29b2da098153b38bfc1b3f9351
-      size: 522446
+      md5: 0d9587dab7009934790b2a1176cb59fc
+      size: 582120
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_logistica.py
       hash: md5
-      md5: d668453f6bf08e8b31accc8973c0587a
-      size: 4409
+      md5: 9c63e3748c48f6f1b16b5dfbe1a96c05
+      size: 5968
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         logistica:
           C: 1.0
           variables:
           - ratio_casos_umbral_objetivo
           - ratio_roll4_umbral_objetivo
           - exceso_actual
+          variables_clima:
+          - precipitation_mm_roll_mean_8
+          - air_temp_mean_c_roll_mean_8
+          - lst_day_c_roll_mean_8
+          - dewpoint_c_roll_mean_8
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -886,52 +990,82 @@ stages:
     outs:
     - path: models/magangue/logistica.joblib
       hash: md5
-      md5: 1910297322554286fd9d60baae47a56c
+      md5: f7093eab9cbbfaecc90d02e7d0fe3bc9
       size: 2241
+    - path: models/magangue/logistica_clima.joblib
+      hash: md5
+      md5: e61006c4bc641613306c76342cfe7519
+      size: 4090
     - path: models/magangue/walk_forward/logistica
       hash: md5
-      md5: 15d252e19325643b70661b92d7e66e90.dir
+      md5: d0721c286f6ae665065901aa6b82d921.dir
       size: 15687
       nfiles: 7
+    - path: models/magangue/walk_forward/logistica_clima
+      hash: md5
+      md5: 645d944bff11184a4823185f34c63d2d.dir
+      size: 28630
+      nfiles: 7
+    - path: reports/municipios/magangue/logistica_clima_coeficientes.json
+      hash: md5
+      md5: 3e55866d325b25518d9e4f031f2f76d0
+      size: 1366
     - path: reports/municipios/magangue/logistica_coeficientes.json
       hash: md5
-      md5: 310c779bd71cb20a4c6470a9cf6fce89
-      size: 618
+      md5: c7fad93f2271628313250fb24534b7cf
+      size: 619
     - path: reports/municipios/magangue/metrics_logistica.json
       hash: md5
-      md5: dbb321270e19df8d09bdbf3ce3a23e4c
-      size: 351
+      md5: 8320734575524767bf849bd57199b14f
+      size: 364
+    - path: reports/municipios/magangue/metrics_logistica_clima.json
+      hash: md5
+      md5: fae24dbeeda0191b9a9de8fd8f633821
+      size: 347
     - path: reports/municipios/magangue/predicciones_logistica.csv
       hash: md5
-      md5: 0c2d4238d26c05a2370d93f81a56460f
-      size: 10950
+      md5: 95d8f6a6ec3510189c7c0395912cf521
+      size: 11351
+    - path: reports/municipios/magangue/predicciones_logistica_clima.csv
+      hash: md5
+      md5: c5178ccad93b26ff452486a84b6a286c
+      size: 11447
   train_logistica@el_carmen_de_bolivar:
-    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio el_carmen_de_bolivar
+    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio 
+      el_carmen_de_bolivar
     deps:
     - path: data/processed/municipios/el_carmen_de_bolivar/caracteristicas.csv
       hash: md5
-      md5: f8a67f1dc56f9492da4cc0609569acfc
-      size: 520841
+      md5: e866b18d3937bef36ab660c496cf2e66
+      size: 580311
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_logistica.py
       hash: md5
-      md5: d668453f6bf08e8b31accc8973c0587a
-      size: 4409
+      md5: 9c63e3748c48f6f1b16b5dfbe1a96c05
+      size: 5968
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         logistica:
           C: 1.0
           variables:
           - ratio_casos_umbral_objetivo
           - ratio_roll4_umbral_objetivo
           - exceso_actual
+          variables_clima:
+          - precipitation_mm_roll_mean_8
+          - air_temp_mean_c_roll_mean_8
+          - lst_day_c_roll_mean_8
+          - dewpoint_c_roll_mean_8
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -939,52 +1073,84 @@ stages:
     outs:
     - path: models/el_carmen_de_bolivar/logistica.joblib
       hash: md5
-      md5: 6aa24f4781c62c118647f639f89dede8
+      md5: 6bc920e20ac45c120af24251e65cdf69
       size: 2241
+    - path: models/el_carmen_de_bolivar/logistica_clima.joblib
+      hash: md5
+      md5: e217b75bc5788f1ce2d18783848c119f
+      size: 4090
     - path: models/el_carmen_de_bolivar/walk_forward/logistica
       hash: md5
-      md5: 9ea1ef55655c0bbe53af270ad29752c3.dir
+      md5: bf5b4b1678b9c416b2d380dfe326dd3b.dir
       size: 15687
       nfiles: 7
+    - path: models/el_carmen_de_bolivar/walk_forward/logistica_clima
+      hash: md5
+      md5: be927541168667c08135d62f9610cb3c.dir
+      size: 28630
+      nfiles: 7
+    - path: 
+        reports/municipios/el_carmen_de_bolivar/logistica_clima_coeficientes.json
+      hash: md5
+      md5: 188ccb2f1edce4725b212a144b65f400
+      size: 1374
     - path: reports/municipios/el_carmen_de_bolivar/logistica_coeficientes.json
       hash: md5
-      md5: d6dcc4f7b64730664abf324c95c8fd1c
-      size: 616
+      md5: 5e79b930de2b42d1f9bcd6b90247a6f0
+      size: 619
     - path: reports/municipios/el_carmen_de_bolivar/metrics_logistica.json
       hash: md5
-      md5: 2ce1eef47d9555a42366db0f0719e79d
-      size: 366
+      md5: 0ffd3f1b9cb631ebe4b350a051362a97
+      size: 297
+    - path: reports/municipios/el_carmen_de_bolivar/metrics_logistica_clima.json
+      hash: md5
+      md5: 67f06c1f126be6f5c481643f8844e37d
+      size: 310
     - path: reports/municipios/el_carmen_de_bolivar/predicciones_logistica.csv
       hash: md5
-      md5: a3427a09a8a5e2e594c2ee6fbe28cea7
-      size: 10954
+      md5: 94b10cf9cc71bcb50a34fe48526c32ee
+      size: 11321
+    - path: 
+        reports/municipios/el_carmen_de_bolivar/predicciones_logistica_clima.csv
+      hash: md5
+      md5: 6c8319e810cefa3b5dcbc63476f1d8ee
+      size: 11350
   train_logistica@turbaco:
-    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio turbaco
+    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio 
+      turbaco
     deps:
     - path: data/processed/municipios/turbaco/caracteristicas.csv
       hash: md5
-      md5: 523e52a936be7c3a8a669dbf43783c8c
-      size: 511451
+      md5: 3bd8af0d07e18c591acad7f09ee05bb8
+      size: 571354
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_logistica.py
       hash: md5
-      md5: d668453f6bf08e8b31accc8973c0587a
-      size: 4409
+      md5: 9c63e3748c48f6f1b16b5dfbe1a96c05
+      size: 5968
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         logistica:
           C: 1.0
           variables:
           - ratio_casos_umbral_objetivo
           - ratio_roll4_umbral_objetivo
           - exceso_actual
+          variables_clima:
+          - precipitation_mm_roll_mean_8
+          - air_temp_mean_c_roll_mean_8
+          - lst_day_c_roll_mean_8
+          - dewpoint_c_roll_mean_8
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -992,52 +1158,82 @@ stages:
     outs:
     - path: models/turbaco/logistica.joblib
       hash: md5
-      md5: ba610a9616a6bd07820ec787bdf40b48
+      md5: e7b73bbef311fddf7cef4e3f143bd75c
       size: 2241
+    - path: models/turbaco/logistica_clima.joblib
+      hash: md5
+      md5: 75b85ab56f8d7af1faa407e9b469988e
+      size: 4090
     - path: models/turbaco/walk_forward/logistica
       hash: md5
-      md5: d21077e74c36acefe39cd4e72dc6d893.dir
+      md5: 60a2b781bca9ddf089a30a4d5f95125c.dir
       size: 15687
       nfiles: 7
+    - path: models/turbaco/walk_forward/logistica_clima
+      hash: md5
+      md5: 9c0eb4dc14805b1d390788e6d6734e8c.dir
+      size: 28630
+      nfiles: 7
+    - path: reports/municipios/turbaco/logistica_clima_coeficientes.json
+      hash: md5
+      md5: c076bc53b275a6f0809d0b91c0c11a50
+      size: 1370
     - path: reports/municipios/turbaco/logistica_coeficientes.json
       hash: md5
-      md5: bd6c7948d12a5cffa80a9dcdd3b98f6f
+      md5: bab9980e6feeb0f6ebb67d8627cbd345
       size: 618
     - path: reports/municipios/turbaco/metrics_logistica.json
       hash: md5
-      md5: 5c5c6c09b55b3526757bf0a0b4f9d559
-      size: 370
+      md5: 9b387985b0180eb7a3e1389e740fbbe9
+      size: 364
+    - path: reports/municipios/turbaco/metrics_logistica_clima.json
+      hash: md5
+      md5: 31723cbc5e07e2e8ee4705906ee6fa93
+      size: 364
     - path: reports/municipios/turbaco/predicciones_logistica.csv
       hash: md5
-      md5: 185cb4f5c9471ffda5706e7c1ea596ad
-      size: 10835
+      md5: 2af55515a2fb68171b333dafdf4c69d4
+      size: 11021
+    - path: reports/municipios/turbaco/predicciones_logistica_clima.csv
+      hash: md5
+      md5: cc6f94dc6a8a2e32775321da75b49c1c
+      size: 11063
   train_logistica@santa_rosa_del_sur:
-    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio santa_rosa_del_sur
+    cmd: .venv\Scripts\python.exe src/models/train_logistica.py --municipio 
+      santa_rosa_del_sur
     deps:
     - path: data/processed/municipios/santa_rosa_del_sur/caracteristicas.csv
       hash: md5
-      md5: 96ad5132ad4a8a227de2c7a68545212f
-      size: 519001
+      md5: e18d7742648968986b28260840468b40
+      size: 576285
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/train_logistica.py
       hash: md5
-      md5: d668453f6bf08e8b31accc8973c0587a
-      size: 4409
+      md5: 9c63e3748c48f6f1b16b5dfbe1a96c05
+      size: 5968
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         logistica:
           C: 1.0
           variables:
           - ratio_casos_umbral_objetivo
           - ratio_roll4_umbral_objetivo
           - exceso_actual
+          variables_clima:
+          - precipitation_mm_roll_mean_8
+          - air_temp_mean_c_roll_mean_8
+          - lst_day_c_roll_mean_8
+          - dewpoint_c_roll_mean_8
         particion:
           train_end_year: 2019
           val_end_year: 2022
@@ -1045,50 +1241,76 @@ stages:
     outs:
     - path: models/santa_rosa_del_sur/logistica.joblib
       hash: md5
-      md5: d429d479179f4f4340495d2469f5f82d
+      md5: 20634ab454b2b6d9ef1c4d90936f991f
       size: 2241
+    - path: models/santa_rosa_del_sur/logistica_clima.joblib
+      hash: md5
+      md5: b05726df0edfc698a3651e517fbb6f84
+      size: 4090
     - path: models/santa_rosa_del_sur/walk_forward/logistica
       hash: md5
-      md5: 94cd8495f691ec4ab27fa7e6aaede881.dir
+      md5: cdf7e92282b9db18f79e84c31abe0430.dir
       size: 15687
       nfiles: 7
+    - path: models/santa_rosa_del_sur/walk_forward/logistica_clima
+      hash: md5
+      md5: 4d75d81b9e7e8234f5d48b6f66b5332a.dir
+      size: 28630
+      nfiles: 7
+    - path: 
+        reports/municipios/santa_rosa_del_sur/logistica_clima_coeficientes.json
+      hash: md5
+      md5: 98c91800214214223b175dd6ad614a0b
+      size: 1368
     - path: reports/municipios/santa_rosa_del_sur/logistica_coeficientes.json
       hash: md5
-      md5: 6ef8bc0eac8fb5d4dc595b12795308ed
-      size: 615
+      md5: 653d6dfa6f865f63eada6f973b90c4ed
+      size: 621
     - path: reports/municipios/santa_rosa_del_sur/metrics_logistica.json
       hash: md5
-      md5: 507a540a013e223550616388b9e9dd5f
-      size: 340
+      md5: 7048a0de1dddd3a3a5e7b0e98cca4aaa
+      size: 307
+    - path: reports/municipios/santa_rosa_del_sur/metrics_logistica_clima.json
+      hash: md5
+      md5: a0c8ffcc1e0e5a85774bd238e06b6533
+      size: 319
     - path: reports/municipios/santa_rosa_del_sur/predicciones_logistica.csv
       hash: md5
-      md5: 0b876f5fb24ff789ae1bd6759072386c
-      size: 11023
+      md5: 2e765617602ee03d8a04e8bcff328aa1
+      size: 11282
+    - path: 
+        reports/municipios/santa_rosa_del_sur/predicciones_logistica_clima.csv
+      hash: md5
+      md5: 82c4f6af3bea73e26a683c4e7222dc6f
+      size: 11335
   train_lstm@magangue:
     cmd: .venv\Scripts\python.exe src/models/train_lstm.py --municipio magangue
     deps:
     - path: data/processed/municipios/magangue/caracteristicas.csv
       hash: md5
-      md5: 89d14c29b2da098153b38bfc1b3f9351
-      size: 522446
+      md5: 0d9587dab7009934790b2a1176cb59fc
+      size: 582120
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/data_generator.py
       hash: md5
       md5: 423bb4c04737de937476d74200cb4af9
       size: 851
     - path: src/models/train_lstm.py
       hash: md5
-      md5: ae5d50fd077702e234a3a559a789f908
-      size: 7075
+      md5: 1b211d8d11f894ff630a20865785a9a2
+      size: 9056
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         lstm:
           window_size: 12
           max_epochs: 100
@@ -1109,50 +1331,62 @@ stages:
     outs:
     - path: models/magangue/lstm.keras
       hash: md5
-      md5: 6e70a0edbec7ab5025bcb4e8fbd73ff5
+      md5: fb06fe90fea5beed4609998e8378ab82
       size: 49246
     - path: models/magangue/lstm_escalador.joblib
       hash: md5
-      md5: ab6199b39474fdd594ccdb6a085662de
+      md5: 97e0629a09db32a8aadc84c20daf436c
       size: 871
     - path: models/magangue/walk_forward/lstm
       hash: md5
-      md5: cf1ecb08f0d6a370a92463a7d0c5d7e2.dir
+      md5: b456e789d8b5093ac7618e6db90cfb90.dir
       size: 1040221
       nfiles: 28
+    - path: reports/municipios/magangue/lstm_curvas_perdida.json
+      hash: md5
+      md5: 70d0f951ffd702c4d9ff3ddbc28895f7
+      size: 4838
+    - path: reports/municipios/magangue/lstm_curvas_perdida.png
+      hash: md5
+      md5: 5cd0612f1679c34591ab406e4b72ae2f
+      size: 93765
     - path: reports/municipios/magangue/metrics_lstm.json
       hash: md5
-      md5: 922756ea0bb71341673a5b64d502d27c
-      size: 384
+      md5: d453deae0d09312fc465c5e8dfc56d84
+      size: 382
     - path: reports/municipios/magangue/predicciones_lstm.csv
       hash: md5
-      md5: 3db110db7f4aae2d7e427acbadd86fa8
-      size: 7762
+      md5: d9a4b073555aa6235793fbaf97bc76ef
+      size: 7979
   train_lstm@el_carmen_de_bolivar:
-    cmd: .venv\Scripts\python.exe src/models/train_lstm.py --municipio el_carmen_de_bolivar
+    cmd: .venv\Scripts\python.exe src/models/train_lstm.py --municipio 
+      el_carmen_de_bolivar
     deps:
     - path: data/processed/municipios/el_carmen_de_bolivar/caracteristicas.csv
       hash: md5
-      md5: f8a67f1dc56f9492da4cc0609569acfc
-      size: 520841
+      md5: e866b18d3937bef36ab660c496cf2e66
+      size: 580311
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/data_generator.py
       hash: md5
       md5: 423bb4c04737de937476d74200cb4af9
       size: 851
     - path: src/models/train_lstm.py
       hash: md5
-      md5: ae5d50fd077702e234a3a559a789f908
-      size: 7075
+      md5: 1b211d8d11f894ff630a20865785a9a2
+      size: 9056
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         lstm:
           window_size: 12
           max_epochs: 100
@@ -1173,50 +1407,61 @@ stages:
     outs:
     - path: models/el_carmen_de_bolivar/lstm.keras
       hash: md5
-      md5: d2dfc063176687c64084abd8a3aa05e2
+      md5: c4353551f9e3b7c34ffc5acaee630266
       size: 49246
     - path: models/el_carmen_de_bolivar/lstm_escalador.joblib
       hash: md5
-      md5: cb2b9c5135644de5b2c1e35ee2fdfbf2
+      md5: 6d2620293df5dd0168729cd3730bd1e7
       size: 871
     - path: models/el_carmen_de_bolivar/walk_forward/lstm
       hash: md5
-      md5: c173a106d1756966c46814c39407f77e.dir
+      md5: 1ff62620455c02152489c075bb0c7de1.dir
       size: 1040221
       nfiles: 28
+    - path: reports/municipios/el_carmen_de_bolivar/lstm_curvas_perdida.json
+      hash: md5
+      md5: bdd25c8d56b02cc51ca5999fec422a99
+      size: 13763
+    - path: reports/municipios/el_carmen_de_bolivar/lstm_curvas_perdida.png
+      hash: md5
+      md5: 5847bbd6b9a530caca457887cb564126
+      size: 94604
     - path: reports/municipios/el_carmen_de_bolivar/metrics_lstm.json
       hash: md5
-      md5: 9f34c0ec102a7009bb44ebe9d1faa890
-      size: 372
+      md5: 42ec81739d5a74fda22bee698a9d4c06
+      size: 342
     - path: reports/municipios/el_carmen_de_bolivar/predicciones_lstm.csv
       hash: md5
-      md5: 8b6e6d4fb0a49cfe1777b7e36150a3ee
-      size: 7780
+      md5: 452884dc53df1983f18e22045675cadf
+      size: 8197
   train_lstm@turbaco:
     cmd: .venv\Scripts\python.exe src/models/train_lstm.py --municipio turbaco
     deps:
     - path: data/processed/municipios/turbaco/caracteristicas.csv
       hash: md5
-      md5: 523e52a936be7c3a8a669dbf43783c8c
-      size: 511451
+      md5: 3bd8af0d07e18c591acad7f09ee05bb8
+      size: 571354
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/data_generator.py
       hash: md5
       md5: 423bb4c04737de937476d74200cb4af9
       size: 851
     - path: src/models/train_lstm.py
       hash: md5
-      md5: ae5d50fd077702e234a3a559a789f908
-      size: 7075
+      md5: 1b211d8d11f894ff630a20865785a9a2
+      size: 9056
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         lstm:
           window_size: 12
           max_epochs: 100
@@ -1237,50 +1482,62 @@ stages:
     outs:
     - path: models/turbaco/lstm.keras
       hash: md5
-      md5: 62f16d52c749115d64166573176542e9
+      md5: 24a3255fe27d1bfab244d52aae516387
       size: 49246
     - path: models/turbaco/lstm_escalador.joblib
       hash: md5
-      md5: 6804c3de1ec63a75de4397dc323f0a53
+      md5: c138df2afcfb5e8017073a067c140c13
       size: 871
     - path: models/turbaco/walk_forward/lstm
       hash: md5
-      md5: ef485b31060a15f08d5b2e234fdf0d2e.dir
+      md5: 039cda197d7b473003e0f4c87f2fe0b5.dir
       size: 1040221
       nfiles: 28
+    - path: reports/municipios/turbaco/lstm_curvas_perdida.json
+      hash: md5
+      md5: ea92ea824c93c5ab6965286e87bbf340
+      size: 12114
+    - path: reports/municipios/turbaco/lstm_curvas_perdida.png
+      hash: md5
+      md5: e0b5d96f96a3b4a8dabcb89a9f00cebc
+      size: 96141
     - path: reports/municipios/turbaco/metrics_lstm.json
       hash: md5
-      md5: 10865ecb827cde9a89cf35d48c00a730
-      size: 385
+      md5: 9cdef99be66549dfa0575b52e5eac246
+      size: 396
     - path: reports/municipios/turbaco/predicciones_lstm.csv
       hash: md5
-      md5: 672b13a05bb877d70e0440ce6f0122a5
-      size: 7703
+      md5: 163570127b3a3a19cefb8b6e6a0db3f2
+      size: 7890
   train_lstm@santa_rosa_del_sur:
-    cmd: .venv\Scripts\python.exe src/models/train_lstm.py --municipio santa_rosa_del_sur
+    cmd: .venv\Scripts\python.exe src/models/train_lstm.py --municipio 
+      santa_rosa_del_sur
     deps:
     - path: data/processed/municipios/santa_rosa_del_sur/caracteristicas.csv
       hash: md5
-      md5: 96ad5132ad4a8a227de2c7a68545212f
-      size: 519001
+      md5: e18d7742648968986b28260840468b40
+      size: 576285
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/data_generator.py
       hash: md5
       md5: 423bb4c04737de937476d74200cb4af9
       size: 851
     - path: src/models/train_lstm.py
       hash: md5
-      md5: ae5d50fd077702e234a3a559a789f908
-      size: 7075
+      md5: 1b211d8d11f894ff630a20865785a9a2
+      size: 9056
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
       size: 2250
     params:
       params.yaml:
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         lstm:
           window_size: 12
           max_epochs: 100
@@ -1301,52 +1558,65 @@ stages:
     outs:
     - path: models/santa_rosa_del_sur/lstm.keras
       hash: md5
-      md5: 23ebd2ed7602fbd584b7c2c4d43afed9
+      md5: 47e204a7fdeeb87f055417c561bc91d2
       size: 49246
     - path: models/santa_rosa_del_sur/lstm_escalador.joblib
       hash: md5
-      md5: 4bacbf62e1a25c8bf6c62605a29af7a3
+      md5: 93ac68eee237a1d752852b7e4524e518
       size: 871
     - path: models/santa_rosa_del_sur/walk_forward/lstm
       hash: md5
-      md5: bc351df16fd7efd99c0e58a0e327e3db.dir
+      md5: 6dcbf8d12c44e64636bc6afb57cb465e.dir
       size: 1040221
       nfiles: 28
+    - path: reports/municipios/santa_rosa_del_sur/lstm_curvas_perdida.json
+      hash: md5
+      md5: 7cfe8bb61fcbe617a5b5461c2bc069af
+      size: 4834
+    - path: reports/municipios/santa_rosa_del_sur/lstm_curvas_perdida.png
+      hash: md5
+      md5: 915dbcedf84a6ab2cf57a557a1fefe6f
+      size: 96134
     - path: reports/municipios/santa_rosa_del_sur/metrics_lstm.json
       hash: md5
-      md5: 17ca1e05029d5ec57ebfbcdba5fc479f
-      size: 383
+      md5: e0c5f532f71af4aa4af5817d1e875844
+      size: 354
     - path: reports/municipios/santa_rosa_del_sur/predicciones_lstm.csv
       hash: md5
-      md5: d39488ce1c85fa8f561ca815cb826c68
-      size: 7869
+      md5: 5813210765765928621376d274387939
+      size: 8013
   evaluate@magangue:
-    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio magangue
+    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio 
+      magangue
     deps:
     - path: data/processed/municipios/magangue/caracteristicas.csv
       hash: md5
-      md5: 89d14c29b2da098153b38bfc1b3f9351
-      size: 522446
+      md5: 0d9587dab7009934790b2a1176cb59fc
+      size: 582120
     - path: reports/municipios/magangue/predicciones_logistica.csv
       hash: md5
-      md5: 0c2d4238d26c05a2370d93f81a56460f
-      size: 10950
+      md5: 95d8f6a6ec3510189c7c0395912cf521
+      size: 11351
+    - path: reports/municipios/magangue/predicciones_logistica_clima.csv
+      hash: md5
+      md5: c5178ccad93b26ff452486a84b6a286c
+      size: 11447
     - path: reports/municipios/magangue/predicciones_lstm.csv
       hash: md5
-      md5: 3db110db7f4aae2d7e427acbadd86fa8
-      size: 7762
+      md5: d9a4b073555aa6235793fbaf97bc76ef
+      size: 7979
     - path: reports/municipios/magangue/predicciones_xgboost.csv
       hash: md5
-      md5: dd3add5b822107aae61b68c775adbc4b
-      size: 7801
+      md5: 94477a1e5be4b74795eaf1a0e061eac9
+      size: 8000
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: e959fd8264b9938115bfd7907b05bf34
-      size: 5887
+      md5: fe032dd652785faee0b392ddffe9502c
+      size: 11788
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -1357,41 +1627,55 @@ stages:
           tamano_bloque: 8
           repeticiones: 2000
           semilla: 42
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
+        target.horizonte: 4
     outs:
+    - path: reports/municipios/magangue/calibracion.png
+      hash: md5
+      md5: 40d233d45e94c996772c77957bc53b4b
+      size: 72555
     - path: reports/municipios/magangue/eval_metrics.json
       hash: md5
-      md5: d313d26d68cddbb77aad4afccd8e5091
-      size: 5528
+      md5: 703d9f591a23490f72b35d006926c855
+      size: 11842
   evaluate@el_carmen_de_bolivar:
-    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio el_carmen_de_bolivar
+    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio 
+      el_carmen_de_bolivar
     deps:
     - path: data/processed/municipios/el_carmen_de_bolivar/caracteristicas.csv
       hash: md5
-      md5: f8a67f1dc56f9492da4cc0609569acfc
-      size: 520841
+      md5: e866b18d3937bef36ab660c496cf2e66
+      size: 580311
     - path: reports/municipios/el_carmen_de_bolivar/predicciones_logistica.csv
       hash: md5
-      md5: a3427a09a8a5e2e594c2ee6fbe28cea7
-      size: 10954
+      md5: 94b10cf9cc71bcb50a34fe48526c32ee
+      size: 11321
+    - path: 
+        reports/municipios/el_carmen_de_bolivar/predicciones_logistica_clima.csv
+      hash: md5
+      md5: 6c8319e810cefa3b5dcbc63476f1d8ee
+      size: 11350
     - path: reports/municipios/el_carmen_de_bolivar/predicciones_lstm.csv
       hash: md5
-      md5: 8b6e6d4fb0a49cfe1777b7e36150a3ee
-      size: 7780
+      md5: 452884dc53df1983f18e22045675cadf
+      size: 8197
     - path: reports/municipios/el_carmen_de_bolivar/predicciones_xgboost.csv
       hash: md5
-      md5: 029abf96a31fd2e04edf9e67d600d952
-      size: 7783
+      md5: 512c4fa51efefd4add28937427a3f6f1
+      size: 7890
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: e959fd8264b9938115bfd7907b05bf34
-      size: 5887
+      md5: fe032dd652785faee0b392ddffe9502c
+      size: 11788
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -1402,41 +1686,54 @@ stages:
           tamano_bloque: 8
           repeticiones: 2000
           semilla: 42
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
+        target.horizonte: 4
     outs:
+    - path: reports/municipios/el_carmen_de_bolivar/calibracion.png
+      hash: md5
+      md5: f0288ce2cb53b53f9c54abec3321566d
+      size: 52320
     - path: reports/municipios/el_carmen_de_bolivar/eval_metrics.json
       hash: md5
-      md5: 6dd27c53cad6c867595c007c1a74b7b3
-      size: 5501
+      md5: 2215f06f7517b9bbc8a51d0c60a93398
+      size: 11028
   evaluate@turbaco:
-    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio turbaco
+    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio 
+      turbaco
     deps:
     - path: data/processed/municipios/turbaco/caracteristicas.csv
       hash: md5
-      md5: 523e52a936be7c3a8a669dbf43783c8c
-      size: 511451
+      md5: 3bd8af0d07e18c591acad7f09ee05bb8
+      size: 571354
     - path: reports/municipios/turbaco/predicciones_logistica.csv
       hash: md5
-      md5: 185cb4f5c9471ffda5706e7c1ea596ad
-      size: 10835
+      md5: 2af55515a2fb68171b333dafdf4c69d4
+      size: 11021
+    - path: reports/municipios/turbaco/predicciones_logistica_clima.csv
+      hash: md5
+      md5: cc6f94dc6a8a2e32775321da75b49c1c
+      size: 11063
     - path: reports/municipios/turbaco/predicciones_lstm.csv
       hash: md5
-      md5: 672b13a05bb877d70e0440ce6f0122a5
-      size: 7703
+      md5: 163570127b3a3a19cefb8b6e6a0db3f2
+      size: 7890
     - path: reports/municipios/turbaco/predicciones_xgboost.csv
       hash: md5
-      md5: a1918bf7812de3747bec69f711acd58e
-      size: 7789
+      md5: 58e94df218aaaa6ec189d7cba2189242
+      size: 7837
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: e959fd8264b9938115bfd7907b05bf34
-      size: 5887
+      md5: fe032dd652785faee0b392ddffe9502c
+      size: 11788
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -1447,41 +1744,55 @@ stages:
           tamano_bloque: 8
           repeticiones: 2000
           semilla: 42
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
+        target.horizonte: 4
     outs:
+    - path: reports/municipios/turbaco/calibracion.png
+      hash: md5
+      md5: 45f6c5478ccda7c69c23ae404b7357d5
+      size: 67482
     - path: reports/municipios/turbaco/eval_metrics.json
       hash: md5
-      md5: de3eebd67130c8d055eadd8d8721b18f
-      size: 5607
+      md5: f4e5a8e053f546e610abbabeb919aa1a
+      size: 12020
   evaluate@santa_rosa_del_sur:
-    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio santa_rosa_del_sur
+    cmd: .venv\Scripts\python.exe src/models/evaluate_model.py --municipio 
+      santa_rosa_del_sur
     deps:
     - path: data/processed/municipios/santa_rosa_del_sur/caracteristicas.csv
       hash: md5
-      md5: 96ad5132ad4a8a227de2c7a68545212f
-      size: 519001
+      md5: e18d7742648968986b28260840468b40
+      size: 576285
     - path: reports/municipios/santa_rosa_del_sur/predicciones_logistica.csv
       hash: md5
-      md5: 0b876f5fb24ff789ae1bd6759072386c
-      size: 11023
+      md5: 2e765617602ee03d8a04e8bcff328aa1
+      size: 11282
+    - path: 
+        reports/municipios/santa_rosa_del_sur/predicciones_logistica_clima.csv
+      hash: md5
+      md5: 82c4f6af3bea73e26a683c4e7222dc6f
+      size: 11335
     - path: reports/municipios/santa_rosa_del_sur/predicciones_lstm.csv
       hash: md5
-      md5: d39488ce1c85fa8f561ca815cb826c68
-      size: 7869
+      md5: 5813210765765928621376d274387939
+      size: 8013
     - path: reports/municipios/santa_rosa_del_sur/predicciones_xgboost.csv
       hash: md5
-      md5: 8a840c8e8d4cda1552c11b1a84a2ae61
-      size: 7836
+      md5: ce6c19c4147df2cc3edf85a40a31ce5c
+      size: 7817
     - path: src/models/comun.py
       hash: md5
-      md5: a8715fb40f6341d657c6bccfa29012d6
-      size: 5213
+      md5: eb39954457884416d030cce0b6aeda8e
+      size: 8729
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: e959fd8264b9938115bfd7907b05bf34
-      size: 5887
+      md5: fe032dd652785faee0b392ddffe9502c
+      size: 11788
     - path: src/rutas.py
       hash: md5
       md5: d6457f4a7ae2a244a6cb6586d9e30233
@@ -1492,26 +1803,34 @@ stages:
           tamano_bloque: 8
           repeticiones: 2000
           semilla: 42
+        eventos:
+          separacion_minima: 2
+          anticipacion: 2
         particion:
           train_end_year: 2019
           val_end_year: 2022
+        target.horizonte: 4
     outs:
+    - path: reports/municipios/santa_rosa_del_sur/calibracion.png
+      hash: md5
+      md5: 93e6217cc02827cd7aed4fd5bbb89040
+      size: 71533
     - path: reports/municipios/santa_rosa_del_sur/eval_metrics.json
       hash: md5
-      md5: 88f3b1c8193aa3b3833f592c17b921e7
-      size: 5514
+      md5: 3b3d91adfea6147116261c43135553bc
+      size: 11395
   resumen:
     cmd: .venv\Scripts\python.exe src/models/resumen_municipios.py
     deps:
     - path: reports/municipios
       hash: md5
-      md5: d23f0696ab5248980abaa39a2c121e9c.dir
-      size: 1065591
-      nfiles: 45
+      md5: b580446bade8b00c60d12c4ea185f830.dir
+      size: 1909934
+      nfiles: 75
     - path: src/models/resumen_municipios.py
       hash: md5
-      md5: a423029940e7abffda44e142af0bee6a
-      size: 2397
+      md5: fe2ca5300b20dcc0e427e939323cbf4e
+      size: 2649
     params:
       params.yaml:
         municipios:
@@ -1533,9 +1852,9 @@ stages:
     outs:
     - path: reports/resumen_municipios.csv
       hash: md5
-      md5: b537b084c1c5fed69fc5c112069981c3
-      size: 5733
+      md5: 61a9ae9b93af2ae1e05d05face27c2b8
+      size: 11812
     - path: reports/resumen_municipios.json
       hash: md5
-      md5: 88a071b4dd336c03fc35c57dfbde7876
-      size: 16620
+      md5: 6800d86d4f6a486c90cff75f1556b4ef
+      size: 40584

@@ -83,6 +83,7 @@ stages:
         - train
         - particion
         - target.horizonte
+        - eventos
       outs:
         - models/${key}/xgboost.json
         - models/${key}/walk_forward/xgboost
@@ -95,7 +96,8 @@ stages:
         - reports/municipios/${key}/xgboost_predicciones.png:
             cache: false
 
-  # Regresión logística con variables relativas al umbral (modelo interpretable).
+  # Regresión logística con variables relativas al umbral (modelo interpretable) y su variante
+  # con clima (logistica_clima), para medir si el clima mejora el modelo operativo.
   train_logistica:
     foreach: ${municipios}
     do:
@@ -109,15 +111,24 @@ stages:
         - logistica
         - particion
         - target.horizonte
+        - eventos
       outs:
         - models/${key}/logistica.joblib
         - models/${key}/walk_forward/logistica
         - reports/municipios/${key}/predicciones_logistica.csv:
             cache: false
+        - models/${key}/logistica_clima.joblib
+        - models/${key}/walk_forward/logistica_clima
+        - reports/municipios/${key}/predicciones_logistica_clima.csv:
+            cache: false
       metrics:
         - reports/municipios/${key}/metrics_logistica.json:
             cache: false
         - reports/municipios/${key}/logistica_coeficientes.json:
+            cache: false
+        - reports/municipios/${key}/metrics_logistica_clima.json:
+            cache: false
+        - reports/municipios/${key}/logistica_clima_coeficientes.json:
             cache: false
 
   # Clasificación de brote T+4 con LSTM (mismas semanas y mismo protocolo que XGBoost).
@@ -135,18 +146,25 @@ stages:
         - lstm
         - particion
         - target.horizonte
+        - eventos
       outs:
         - models/${key}/lstm.keras
         - models/${key}/lstm_escalador.joblib
         - models/${key}/walk_forward/lstm
         - reports/municipios/${key}/predicciones_lstm.csv:
             cache: false
+        - reports/municipios/${key}/lstm_curvas_perdida.json:
+            cache: false
       metrics:
         - reports/municipios/${key}/metrics_lstm.json:
             cache: false
+      plots:
+        - reports/municipios/${key}/lstm_curvas_perdida.png:
+            cache: false
 
-  # Evaluación clínica comparativa (XGBoost, LSTM, logística y líneas base) con umbral de
-  # Youden dinámico e intervalos de confianza por bootstrap de bloques.
+  # Evaluación comparativa (XGBoost, LSTM, logística, líneas base y alerta del canal endémico)
+  # con umbral de Youden dinámico, intervalos por bootstrap de bloques, métricas por brote y
+  # calibración de la probabilidad.
   evaluate:
     foreach: ${municipios}
     do:
@@ -159,11 +177,17 @@ stages:
         - reports/municipios/${key}/predicciones_xgboost.csv
         - reports/municipios/${key}/predicciones_lstm.csv
         - reports/municipios/${key}/predicciones_logistica.csv
+        - reports/municipios/${key}/predicciones_logistica_clima.csv
       params:
         - particion
+        - target.horizonte
+        - eventos
         - evaluate
       metrics:
         - reports/municipios/${key}/eval_metrics.json:
+            cache: false
+      plots:
+        - reports/municipios/${key}/calibracion.png:
             cache: false
 
   # Tabla comparativa de todos los municipios.

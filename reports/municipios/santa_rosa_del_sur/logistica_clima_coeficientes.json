@@ -1,0 +1,38 @@
+{
+    "ratio_casos_umbral_objetivo": {
+        "coeficiente": 1.2044850551175197,
+        "razon_odds_por_desviacion": 3.335041273381419,
+        "desviacion_log1p": 0.43525707340252845
+    },
+    "ratio_roll4_umbral_objetivo": {
+        "coeficiente": 1.449424375211411,
+        "razon_odds_por_desviacion": 4.260661266920284,
+        "desviacion_log1p": 0.40367702566123065
+    },
+    "exceso_actual": {
+        "coeficiente": -0.00819611739168918,
+        "razon_odds_por_desviacion": 0.9918373792019846,
+        "desviacion_log1p": 0.457716010330588
+    },
+    "precipitation_mm_roll_mean_8": {
+        "coeficiente": 0.34938836513359534,
+        "razon_odds_por_desviacion": 1.4181998627832513,
+        "desviacion": 19.693968986237078
+    },
+    "air_temp_mean_c_roll_mean_8": {
+        "coeficiente": -0.7055618484978712,
+        "razon_odds_por_desviacion": 0.4938310380698562,
+        "desviacion": 0.8879935958005467
+    },
+    "lst_day_c_roll_mean_8": {
+        "coeficiente": 0.334942609973442,
+        "razon_odds_por_desviacion": 1.3978601596887275,
+        "desviacion": 2.0872186612972365
+    },
+    "dewpoint_c_roll_mean_8": {
+        "coeficiente": -0.8784178386473022,
+        "razon_odds_por_desviacion": 0.4154396845975613,
+        "desviacion": 0.7739011405104226
+    },
+    "intercepto": -2.982567948524737
+}

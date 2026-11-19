@@ -21,9 +21,9 @@ TARGET = "target_brote_t4"
 # - identificadores de tiempo;
 # - conteos de la semana t en valor absoluto (se usan en forma relativa al umbral, porque su
 #   escala cambió mucho entre la fase endémica y la hiperendémica);
-# - umbrales absolutos y la etiqueta.
+# - umbrales absolutos, la línea central del canal (solo la usan las líneas base) y la etiqueta.
 COLUMNAS_NO_PREDICTORAS = {
-    "ANO", "SEMANA", "umbral_brote", "umbral_objetivo", "es_brote_actual", TARGET,
+    "ANO", "SEMANA", "umbral_brote", "umbral_objetivo", "centro_canal", "es_brote_actual", TARGET,
 }
 
 
@@ -74,9 +74,12 @@ def umbral_youden(y, p):
     return float(umbral if np.isfinite(umbral) else np.max(p) + 1e-9)
 
 
-def aplicar_umbral_dinamico(pred):
+def aplicar_umbral_dinamico(pred, umbral_fijo=None):
     """Para cada año, el umbral de decisión se calibra con las predicciones fuera de muestra
-    del año anterior (información disponible al momento de emitir la alerta)."""
+    del año anterior (información disponible al momento de emitir la alerta).
+
+    `umbral_fijo` sirve para reglas que ya emiten alertas binarias (la alerta del canal
+    endémico): se usa ese umbral en lugar de Youden, sobre las mismas semanas."""
     pred = pred.sort_values(["ANO", "SEMANA"]).copy()
     pred["umbral_decision"] = np.nan
     anos = sorted(pred["ANO"].unique())
@@ -84,7 +87,8 @@ def aplicar_umbral_dinamico(pred):
         prev = pred[pred["ANO"] == anterior]
         if prev["y"].nunique() < 2:  # año sin ambas clases: se usan todos los años previos
             prev = pred[pred["ANO"] <= anterior]
-        pred.loc[pred["ANO"] == actual, "umbral_decision"] = umbral_youden(prev["y"], prev["prob"])
+        umbral = umbral_fijo if umbral_fijo is not None else umbral_youden(prev["y"], prev["prob"])
+        pred.loc[pred["ANO"] == actual, "umbral_decision"] = umbral
     pred["alerta"] = (pred["prob"] >= pred["umbral_decision"]).astype(int)
     return pred.dropna(subset=["umbral_decision"])
 
@@ -93,9 +97,9 @@ def _auc(y, p):
     return float(roc_auc_score(y, p)) if len(np.unique(y)) == 2 else float("nan")
 
 
-def resumir_predicciones(pred, particion):
+def resumir_predicciones(pred, particion, umbral_fijo=None):
     """Métricas de un modelo a partir de sus predicciones fuera de muestra (ANO, SEMANA, y, prob)."""
-    pred = aplicar_umbral_dinamico(pred)
+    pred = aplicar_umbral_dinamico(pred, umbral_fijo)
     val = pred[pred["ANO"] <= particion["val_end_year"]]
     test = pred[pred["ANO"] > particion["val_end_year"]]
     tn, fp, fn, tp = confusion_matrix(test["y"], test["alerta"], labels=[0, 1]).ravel()
@@ -109,6 +113,72 @@ def resumir_predicciones(pred, particion):
         "test_especificidad": float(tn / (tn + fp)) if tn + fp else float("nan"),
         "test_precision": float(tp / (tp + fp)) if tp + fp else float("nan"),
         "test_vp": int(tp), "test_fp": int(fp), "test_fn": int(fn), "test_vn": int(tn),
+        **metricas_evento(test, cargar_params("target")["horizonte"], **cargar_params("eventos")),
+    }
+
+
+def episodios(serie, separacion_minima):
+    """Tramos de semanas consecutivas con valor 1, como pares (inicio, fin) de posiciones.
+    Dos tramos separados por menos de `separacion_minima` semanas en 0 se consideran uno solo
+    (un nuevo brote exige al menos 2 semanas previas por debajo del umbral)."""
+    tramos, inicio, ceros = [], None, 0
+    for i, v in enumerate(serie):
+        if v == 1:
+            if inicio is None:
+                inicio = i
+            elif ceros:
+                if ceros < separacion_minima:
+                    pass  # pausa corta: sigue el mismo episodio
+                else:
+                    tramos.append((inicio, i - ceros - 1))
+                    inicio = i
+            ceros = 0
+        elif inicio is not None:
+            ceros += 1
+    if inicio is not None:
+        tramos.append((inicio, len(serie) - 1 - ceros))
+    return tramos
+
+
+def metricas_evento(pred, horizonte, separacion_minima, anticipacion):
+    """Métricas por evento de Umaña et al. (2026), adaptadas a una alerta que se emite h semanas
+    antes de la semana objetivo. Las series se leen en tiempo de la semana objetivo (t+h).
+
+    - Brote: episodio de semanas con brote real. Los que ya están en curso en la primera semana
+      evaluada no cuentan, porque su inicio no se observa.
+    - Brote avisado: hay alguna alerta para su semana de inicio o para las `anticipacion`
+      semanas anteriores.
+    - Capacidad de detección = brotes avisados / brotes.
+    - Razón de alertas = episodios de alerta que anteceden o coinciden con un brote / episodios
+      de alerta emitidos.
+    - Desempeño = promedio de las dos (alfa = 0,5, como en el artículo).
+    - Ventana de oportunidad: semanas entre la emisión de la primera alerta del episodio que avisó
+      el brote y el inicio del brote (incluye las h semanas del horizonte).
+    """
+    y = pred["y"].to_numpy()
+    alerta = pred["alerta"].to_numpy()
+    brotes = [b for b in episodios(y, separacion_minima) if b[0] > 0]
+    alertas = episodios(alerta, separacion_minima)
+
+    avisados, ventanas = 0, []
+    for inicio, _ in brotes:
+        previas = [a for a in alertas if a[0] <= inicio and a[1] >= inicio - anticipacion]
+        if previas:
+            avisados += 1
+            ventanas.append(inicio - previas[0][0] + horizonte)
+    utiles = sum(
+        any(a[0] <= fin and a[1] >= inicio - anticipacion for inicio, fin in brotes) for a in alertas
+    )
+    deteccion = avisados / len(brotes) if brotes else float("nan")
+    razon = utiles / len(alertas) if alertas else float("nan")
+    return {
+        "test_brotes": len(brotes),
+        "test_brotes_avisados": avisados,
+        "test_episodios_alerta": len(alertas),
+        "test_capacidad_deteccion": float(deteccion),
+        "test_razon_alertas": float(razon),
+        "test_desempeno_evento": float(0.5 * deteccion + 0.5 * razon),
+        "test_ventana_oportunidad_mediana": float(np.median(ventanas)) if ventanas else float("nan"),
     }
 
 

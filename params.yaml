@@ -21,9 +21,12 @@ municipios:
 # Definición de brote (canal endémico móvil), compartida por todos los modelos.
 # Brote en la semana s del año Y: casos > percentil de la semana s en los años Y-anos_ventana..Y-1.
 target:
-  anos_ventana: 5
-  anos_minimos: 3   # años previos mínimos para calcular el umbral (antes no hay etiqueta)
-  percentil: 0.75
+  metodo: bortman            # percentil | bortman (Bortman 1999; Umaña et al. 2026)
+  anos_ventana: 5            # Umaña et al. (2026): ventanas cortas (5 años) rinden mejor que 7 o 9
+  anos_minimos: 3            # años previos mínimos para calcular el umbral (antes no hay etiqueta)
+  percentil: 0.75            # solo para metodo: percentil
+  bortman_desplazamiento: 0.001  # manejo de ceros en la media geométrica (Umaña et al., 2026)
+  semanas_consecutivas: 1    # brote si se supera el umbral k semanas seguidas (Minsalud/INS usa 3)
   horizonte: 4
 
 # Partición cronológica por años epidemiológicos (inclusive):
@@ -51,6 +54,18 @@ logistica:
     - ratio_casos_umbral_objetivo   # casos de la semana / umbral de brote de dentro de 4 semanas
     - ratio_roll4_umbral_objetivo   # media de las últimas 4 semanas / umbral de dentro de 4 semanas
     - exceso_actual                 # casos de la semana / umbral de brote de esta semana
+  # Variante logistica_clima: las mismas variables más el clima, para medir si el clima mejora
+  # el modelo operativo. Medias de 8 semanas rezagadas 4 (ciclo del vector: 4 a 12 semanas).
+  variables_clima:
+    - precipitation_mm_roll_mean_8
+    - air_temp_mean_c_roll_mean_8
+    - lst_day_c_roll_mean_8
+    - dewpoint_c_roll_mean_8
+
+# Métricas por evento (Umaña et al., 2026), calculadas sobre el periodo de prueba.
+eventos:
+  separacion_minima: 2   # semanas por debajo del umbral para que empiece un nuevo brote o alerta
+  anticipacion: 2        # semanas antes del inicio del brote en que una alerta cuenta como aviso
 
 evaluate:
   tamano_bloque: 8      # semanas consecutivas por bloque en el bootstrap

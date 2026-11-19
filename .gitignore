@@ -1,55 +1,6 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual Environments
+*.pyc
 .venv/
-env/
-ENV/
-env.bak/
-venv/
+.pytest_cache/
 
-# Jupyter Notebooks
-.ipynb_checkpoints
-*/.ipynb_checkpoints/*
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# DVC local files
-.dvc/tmp
-.dvc/cache
-
-# Reports exclusions requested by user
-reports/bitacora/
-reports/propuesta/*.docx
-reports/propuesta/*.pdf
-
-# Project instructions & memory
-GEMINI.md
-reports/resumen_modelado.md
-memoria_tesis.md
-estado_y_opciones_cartagena.md
+.claude/

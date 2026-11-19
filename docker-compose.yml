@@ -1,0 +1,26 @@
+services:
+  api:
+    build: ./src_api
+    image: dengue-alerta-api:0.1
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_BACKEND: ${MODEL_BACKEND:-simulado}
+      MODEL_VERSION: ${MODEL_VERSION:-simulado-0.1}
+      UMBRAL_DECISION: ${UMBRAL_DECISION:-0.5}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  dashboard:
+    build: ./src_dashboard
+    image: dengue-alerta-dashboard:0.1
+    ports:
+      - "8501:8501"
+    environment:
+      API_URL: http://api:8000/api/v1
+    depends_on:
+      api:
+        condition: service_healthy

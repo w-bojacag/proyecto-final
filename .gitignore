@@ -36,3 +36,7 @@ contexto_retomar.md
 
 # Base SQLite local de la API (datos cargados desde CSV)
 src_api/data/
+
+# Artefactos de empaquetado del paquete del modelo (el .whl en dist/ sí se versiona)
+models/paquete_modelo/build/
+models/paquete_modelo/*.egg-info/

@@ -8,6 +8,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Paquete del modelo logístico (.whl generado desde models/paquete_modelo/; ver README)
+COPY model_pkg/*.whl /tmp/paquete/
+RUN pip install --no-cache-dir /tmp/paquete/*.whl && rm -rf /tmp/paquete
+
 COPY app ./app
 
 EXPOSE 8000

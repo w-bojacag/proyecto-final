@@ -244,14 +244,14 @@ def grafica_canal_clima(df: pd.DataFrame) -> go.Figure:
                              mode="lines", line=dict(color="#1f77b4")), row=1, col=1)
     fig.add_trace(go.Scatter(x=df["semana"], y=df["umbral_canal"], name="Umbral canal endémico",
                              mode="lines", line=dict(color="#d62728", dash="dash")), row=1, col=1)
-    # Etiqueta (brote dentro de 4 semanas) en el eje derecho 0–1, como línea de escalón roja translúcida.
+    # Etiqueta actual (brote en la semana) en el eje derecho 0–1, como línea de escalón roja translúcida.
     if "etiqueta" in df.columns and df["etiqueta"].notna().any():
         fig.add_trace(go.Scatter(
-            x=df["semana"], y=df["etiqueta"].astype(float), name="Etiqueta: brote en 4 semanas",
+            x=df["semana"], y=df["etiqueta"].astype(float), name="Brote en la semana",
             mode="lines", line=dict(color="rgba(214, 39, 40, 0.55)", width=2, shape="hv"),
             fill="tozeroy", fillcolor="rgba(214, 39, 40, 0.15)",
         ), row=1, col=1, secondary_y=True)
-        fig.update_yaxes(title_text="Etiqueta (0 / 1)", range=[0, 1], tickvals=[0, 1],
+        fig.update_yaxes(title_text="Brote en la semana (0 = no, 1 = sí)", range=[0, 1], tickvals=[0, 1],
                          showgrid=False, secondary_y=True, row=1, col=1)
     fig.add_trace(go.Scatter(x=df["semana"], y=df["lluvia_mm"], name="Lluvia",
                              mode="lines", line=dict(color="#2ca02c")), row=2, col=1)
@@ -265,9 +265,6 @@ def grafica_canal_clima(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def bloque_advertencia(texto: str):
-    if texto:
-        st.warning(texto, icon="⚠️")
 
 
 # ---------- Modal de detalle ----------
@@ -296,7 +293,6 @@ def modal_detalle(pred: dict, fila: dict):
     if pred.get("exceso_observado") is not None:
         obs = "sí" if pred["exceso_observado"] else "no"
         st.caption(f"Comparación de prueba: en la semana objetivo hubo exceso registrado → **{obs}**.")
-    # bloque_advertencia(pred.get("advertencia", ""))
 
 
 # ---------- Encabezado ----------
@@ -326,16 +322,12 @@ except ApiError as exc:
     st.info("Inicie la API (docker compose up, o uvicorn en src_api/).")
     st.stop()
 
-modo = estado["modo"]
-st.caption(
-    "Datos: demo (simulados)." if modo == "demo"
-    else "Datos: SQLite (cargados desde CSV en la pestaña Configuración)."
-)
+st.caption("Datos: SQLite (cargados desde CSV en la pestaña Configuración).")
 try:
     rango = cargar_rango()
     error_rango = ""
 except ApiError as exc:
-    # Sin datos (p. ej. modo SQLite sin CSV cargados): las pestañas de datos lo indican;
+    # Sin datos cargados: las pestañas de datos lo indican;
     # la pestaña de configuración sigue disponible.
     rango, error_rango = None, str(exc)
 
@@ -521,8 +513,7 @@ with tab_casos:
             "superan el umbral del canal endémico, seguidos. "
             "Al mover o hacer zoom en una gráfica, se mueven todas."
         )
-        if modo == "sqlite":
-            st.caption("Datos semanales cargados desde caracteristicas.csv (pestaña Configuración).")
+        st.caption("Datos semanales cargados desde caracteristicas.csv (pestaña Configuración).")
         st.plotly_chart(grafica_canal_clima(serie_canal), use_container_width=True)
         c1, c2, c3 = st.columns(3)
         c1.metric("Semanas registradas", len(serie_canal))
@@ -533,9 +524,9 @@ with tab_casos:
 with tab_modelo:
     st.subheader("Detalle técnico del modelo")
     st.table(pd.DataFrame({
-        "Concepto": ["Modelo", "Backend", "Versión", "Horizonte (semanas)", "Umbral de decisión",
+        "Concepto": ["Modelo", "Versión", "Horizonte (semanas)", "Umbral de decisión",
                      "Variables", "Métricas de evaluación"],
-        "Valor": [modelo_info["nombre"], modelo_info["backend"], modelo_info["version"],
+        "Valor": [modelo_info["nombre"], modelo_info["version"],
                   str(modelo_info["horizonte_semanas"]), f"{modelo_info['umbral_decision']:.0%}",
                   ", ".join(modelo_info["variables"]), modelo_info["metricas"]],
     }))
@@ -544,14 +535,6 @@ with tab_modelo:
 # ---------- 4. Configuración ----------
 with tab_config:
     st.subheader("Configuración de datos")
-    if modo == "sqlite":
-        st.success("Modo activo: **SQLite**. Las pestañas muestran los datos cargados desde CSV.")
-    else:
-        st.info(
-            "Modo activo: **demo** (datos simulados). Los CSV que cargue se guardan en SQLite, "
-            "pero no se usan hasta iniciar la API con `MODO_DATOS=sqlite`."
-        )
-
     st.markdown("**Cargar datos semanales de un municipio**")
     st.caption(
         "Archivo: `data/processed/municipios/<municipio>/caracteristicas.csv` del pipeline. "
@@ -588,14 +571,6 @@ with tab_config:
         "Cargado el": (m["cargado_en"] or "—").replace("T", " ")[:19],
     } for m in estado["municipios"]]), hide_index=True, use_container_width=True)
 
-    with st.expander("Cómo cambiar entre demo y SQLite"):
-        st.markdown(
-            "La API lee la variable `MODO_DATOS` al iniciar:\n\n"
-            "- `MODO_DATOS=demo` (por defecto): datos simulados. Las predicciones funcionan.\n"
-            "- `MODO_DATOS=sqlite`: datos semanales de la base SQLite, cargados desde los CSV. "
-            "Las predicciones usan esos datos.\n\n"
-            "Para cambiarla con docker compose, defina `MODO_DATOS` antes de levantar los servicios."
-        )
 
 # ---------- 5. Acerca de ----------
 with tab_acerca:

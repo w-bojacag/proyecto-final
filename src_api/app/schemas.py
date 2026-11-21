@@ -24,7 +24,7 @@ class PuntoSerieOut(BaseModel):
     umbral_canal: float
     exceso: bool
     etiqueta: int | None = Field(
-        None, description="Brote dentro de horizonte_semanas (0 o 1). Vacío si el dato no se cargó o no existe."
+        None, description="Brote en la semana actual (0 o 1), según es_brote_actual del pipeline. Vacío si no se cargó."
     )
 
 
@@ -48,9 +48,7 @@ class PrediccionOut(BaseModel):
     )
     variables_influyentes: list[dict]
     modelo: str
-    backend: str
     version_modelo: str
-    advertencia: str
 
 
 class EstadoMunicipioOut(BaseModel):
@@ -72,16 +70,13 @@ class ResultadoCargaOut(EstadoMunicipioOut):
 
 
 class EstadoDatosOut(BaseModel):
-    modo: str
     municipios: list[EstadoMunicipioOut]
 
 
 class ModeloInfoOut(BaseModel):
     nombre: str
-    backend: str
     version: str
     horizonte_semanas: int
     umbral_decision: float
     variables: list[str]
     metricas: str
-    advertencia: str

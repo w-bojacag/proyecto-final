@@ -5,11 +5,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      MODEL_BACKEND: ${MODEL_BACKEND:-simulado}
-      MODEL_VERSION: ${MODEL_VERSION:-simulado-0.1}
+      MODEL_VERSION: ${MODEL_VERSION:-logistica-0.1}
       UMBRAL_DECISION: ${UMBRAL_DECISION:-0.5}
       ANIO_MINIMO_GRAFICOS: ${ANIO_MINIMO_GRAFICOS:-2012}
-      MODO_DATOS: ${MODO_DATOS:-sqlite}  # demo o sqlite
       SQLITE_PATH: /app/data/dengue.sqlite
     volumes:
       - ./src_api/data:/app/data

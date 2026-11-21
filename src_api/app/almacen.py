@@ -10,7 +10,7 @@ Se usan estas columnas (las demás se ignoran):
     air_temp_mean_c                  -> temp_media_c (promedio semanal)
     umbral_brote                     -> umbral_canal (límite superior del canal endémico de Bortman)
 
-    target_brote_t4                  -> etiqueta (opcional: brote dentro de 4 semanas, 0 o 1)
+    es_brote_actual                  -> etiqueta (opcional: brote en la semana actual, 0 o 1)
 
 exceso = casos > umbral_canal (igual que `es_brote_actual` del pipeline).
 Si el archivo no trae `target_brote_t4`, la etiqueta se guarda vacía (NULL) y la gráfica no la muestra.
@@ -40,7 +40,7 @@ MAPEO = {
     "umbral_brote": "umbral_canal",
 }
 # columna opcional del CSV -> nombre interno (no obligatoria para cargar el archivo)
-OPCIONAL = {"target_brote_t4": "etiqueta"}
+OPCIONAL = {"es_brote_actual": "etiqueta"}
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS serie_semanal (
@@ -117,14 +117,14 @@ def leer_csv(contenido: bytes) -> pd.DataFrame:
     if df.empty:
         raise CsvInvalido("El archivo no tiene filas de datos.")
 
-    tiene_etiqueta = "target_brote_t4" in df.columns
+    tiene_etiqueta = "es_brote_actual" in df.columns
     df = df[list(MAPEO) + [c for c in OPCIONAL if c in df.columns]].rename(columns={**MAPEO, **OPCIONAL}).copy()
     for c in MAPEO.values():
         df[c] = pd.to_numeric(df[c], errors="coerce")
     if tiene_etiqueta:
         df["etiqueta"] = pd.to_numeric(df["etiqueta"], errors="coerce")
         if not df["etiqueta"].dropna().isin([0, 1]).all():
-            raise CsvInvalido("La columna target_brote_t4 solo puede contener 0 o 1.")
+            raise CsvInvalido("La columna es_brote_actual solo puede contener 0 o 1.")
     else:
         df["etiqueta"] = None
 
@@ -236,7 +236,7 @@ def rango_datos(municipio_id: str) -> tuple[pd.Timestamp, pd.Timestamp] | None:
 
 
 def serie_semanal(municipio_id: str) -> pd.DataFrame | None:
-    """Serie del municipio con las mismas columnas que la serie demo.
+    """Serie semanal del municipio, con las columnas que usa la API.
 
     `semana` es el domingo que inicia la semana epidemiológica.
     Devuelve None si el municipio no tiene datos cargados.

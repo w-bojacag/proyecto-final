@@ -3,8 +3,8 @@
 Ejecutar desde src_api/:  uvicorn app.main:app --reload
 Documentación interactiva: http://localhost:8000/docs
 
-MODO_DATOS=demo (por defecto): series simuladas.
-MODO_DATOS=sqlite: series semanales cargadas desde caracteristicas.csv en /api/v1/datos/{municipio_id}/csv.
+Las series se cargan en SQLite desde caracteristicas.csv (POST /api/v1/datos/{municipio_id}/csv).
+El modelo es la regresión logística del paquete dengue-modelo-logistica (.whl).
 """
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -23,10 +23,6 @@ from .schemas import (
     PuntoSerieOut,
     RangoFechasOut,
     ResultadoCargaOut,
-)
-
-ADVERTENCIA_SIMULADO = (
-    "PROTOTIPO: datos y modelo simulados. Resultado ilustrativo, no es una predicción validada."
 )
 
 app = FastAPI(
@@ -49,9 +45,8 @@ def _sin_datos(nombre: str) -> HTTPException:
 def health():
     return {
         "estado": "ok",
-        "backend": predictor.backend,
+        "modelo": predictor.nombre,
         "version": settings.model_version,
-        "modo_datos": settings.modo_datos,
     }
 
 
@@ -126,7 +121,7 @@ def prediccion(body: PrediccionIn):
         raise HTTPException(status_code=422, detail=f"Falta la semana objetivo {objetivo_fecha.date()} en los datos.")
     fila_objetivo = filas_objetivo.iloc[0]
 
-    pred = predictor.predecir(historial, body.municipio_id, fecha)
+    pred = predictor.predecir(historial, body.municipio_id, fecha, float(fila_objetivo["umbral_canal"]))
 
     return PrediccionOut(
         municipio_id=body.municipio_id,
@@ -141,9 +136,7 @@ def prediccion(body: PrediccionIn):
         exceso_observado=bool(fila_objetivo["exceso"]),
         variables_influyentes=pred.variables_influyentes,
         modelo=predictor.nombre,
-        backend=predictor.backend,
         version_modelo=settings.model_version,
-        advertencia=ADVERTENCIA_SIMULADO if predictor.backend == "simulado" else "",
     )
 
 
@@ -151,21 +144,18 @@ def prediccion(body: PrediccionIn):
 def modelo_info():
     return ModeloInfoOut(
         nombre=predictor.nombre,
-        backend=predictor.backend,
         version=settings.model_version,
         horizonte_semanas=settings.horizonte_semanas,
         umbral_decision=settings.umbral_decision,
         variables=predictor.variables,
         metricas="PENDIENTE: recall, especificidad, precisión, F1 y AUC-ROC por municipio aún no calculados.",
-        advertencia=ADVERTENCIA_SIMULADO if predictor.backend == "simulado" else "",
     )
 
 
 @app.get("/api/v1/datos/estado", response_model=EstadoDatosOut)
 def estado_datos():
-    """Modo activo y, por municipio, lo que hay guardado en SQLite."""
+    """Por municipio, lo que hay guardado en SQLite."""
     return EstadoDatosOut(
-        modo=settings.modo_datos,
         municipios=[
             EstadoMunicipioOut(id=k, nombre=v, **almacen.estado_municipio(k))
             for k, v in MUNICIPIOS.items()
@@ -178,7 +168,6 @@ async def cargar_csv(municipio_id: str, archivo: UploadFile = File(...)):
     """Carga caracteristicas.csv (semanal) en SQLite.
 
     Las semanas que ya existen se actualizan; las nuevas se agregan; las demás no se tocan.
-    Se guarda aunque el modo activo sea demo; los datos se usan sólo con MODO_DATOS=sqlite.
     """
     if municipio_id not in MUNICIPIOS:
         raise HTTPException(status_code=404, detail=f"Municipio desconocido: {municipio_id}")

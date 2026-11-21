@@ -1,23 +1,28 @@
-"""Interfaz del modelo de predicción de excesos de dengue.
+"""Modelo de predicción de excesos de dengue.
 
-La API sólo conoce esta interfaz. Para conectar el modelo real:
-1. Crear una clase que herede de `Predictor` y cargue el artefacto guardado
-   (con su preprocesamiento, según la regla del proyecto).
+El modelo es la regresión logística del paquete `dengue-modelo-logistica` (.whl en `model_pkg/`,
+generado desde `models/paquete_modelo/`). Para agregar otro modelo:
+1. Crear una clase que herede de `Predictor`.
 2. Construir las variables exactamente como en entrenamiento, usando sólo
-   `historial` (datos hasta `fecha_corte`).
+   `historial` (datos hasta `fecha_corte`) y `umbral_objetivo`.
 3. Devolver la probabilidad de exceso en la semana `fecha_corte + horizonte`.
-4. Registrarla en `cargar_predictor()`.
+4. Devolverla desde `cargar_predictor()`.
 
 Los endpoints no cambian.
 """
-import hashlib
-import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 import pandas as pd
 
 from .config import settings
+
+# Variables de la regresión logística (params.yaml, sección logistica).
+VARIABLES_LOGISTICA = [
+    "ratio_casos_umbral_objetivo",
+    "ratio_roll4_umbral_objetivo",
+    "exceso_actual",
+]
 
 
 @dataclass
@@ -28,63 +33,53 @@ class Prediccion:
 
 class Predictor(ABC):
     nombre: str
-    backend: str
     horizonte: int
     variables: list[str]
 
     @abstractmethod
     def predecir(
-        self, historial: pd.DataFrame, municipio_id: str, fecha_corte: pd.Timestamp
+        self,
+        historial: pd.DataFrame,
+        municipio_id: str,
+        fecha_corte: pd.Timestamp,
+        umbral_objetivo: float,
     ) -> Prediccion:
-        """`historial`: filas del municipio con semana <= fecha_corte (sin fuga de información)."""
+        """`historial`: filas del municipio con semana <= fecha_corte (sin fuga de información).
+
+        `umbral_objetivo`: umbral del canal de la semana fecha_corte + horizonte. Se conoce en la
+        fecha de corte porque sólo depende de años anteriores (igual que en el pipeline).
+        """
 
 
-def _ruido_determinista(municipio_id: str, fecha_corte: pd.Timestamp) -> float:
-    """Valor estable en [-0.5, 0.5] para que la misma consulta devuelva la misma respuesta."""
-    digest = hashlib.sha256(f"{municipio_id}|{fecha_corte.date()}|{settings.semilla}".encode())
-    return int(digest.hexdigest()[:8], 16) / 0xFFFFFFFF - 0.5
+class PredictorLogistica(Predictor):
+    """Regresión logística empaquetada en `dengue-modelo-logistica`, una por municipio.
 
-
-class PredictorSimulado(Predictor):
-    """Placeholder: no es un modelo entrenado. Sirve para probar el flujo completo.
-
-    Los coeficientes son arbitrarios. No deben usarse para afirmar resultados.
+    Las variables y el modelo vienen del paquete, así que la API y el entrenamiento usan el mismo código.
     """
 
-    nombre = "Modelo"
-    backend = "simulado"
+    nombre = "Regresión logística"
     horizonte = settings.horizonte_semanas
-    variables = ["casos_recientes_vs_umbral", "lluvia_reciente_mm", "ruido"]
+    variables = VARIABLES_LOGISTICA
 
     def predecir(
-        self, historial: pd.DataFrame, municipio_id: str, fecha_corte: pd.Timestamp
+        self,
+        historial: pd.DataFrame,
+        municipio_id: str,
+        fecha_corte: pd.Timestamp,
+        umbral_objetivo: float,
     ) -> Prediccion:
-        reciente = historial.tail(settings.ventana_historial)
-        umbral = max(float(reciente["umbral_canal"].iloc[-1]), 1.0)
-        razon = float(reciente["casos"].mean()) / umbral
-        lluvia = float(reciente["lluvia_mm"].tail(4).mean())
-        ruido = _ruido_determinista(municipio_id, fecha_corte)
+        import modelo_dengue  # import tardío: el paquete se instala desde el .whl en la imagen
 
-        aporte_casos = 1.5 * (razon - 1.0)
-        aporte_lluvia = 0.01 * (lluvia - 60.0)
-        aporte_ruido = 0.4 * ruido
-        z = -0.8 + aporte_casos + aporte_lluvia + aporte_ruido
-        prob = 1.0 / (1.0 + math.exp(-z))
-
+        if municipio_id not in modelo_dengue.municipios_disponibles():
+            raise RuntimeError(f"El paquete del modelo no incluye '{municipio_id}'.")
+        resultado = modelo_dengue.predecir(historial, municipio_id, umbral_objetivo)
         return Prediccion(
-            probabilidad_exceso=round(prob, 4),
+            probabilidad_exceso=round(resultado["probabilidad_exceso"], 4),
             variables_influyentes=[
-                {"variable": "casos_recientes_vs_umbral", "aporte": round(aporte_casos, 3)},
-                {"variable": "lluvia_reciente_mm", "aporte": round(aporte_lluvia, 3)},
-                {"variable": "ruido", "aporte": round(aporte_ruido, 3)},
+                {"variable": v, "aporte": round(a, 3)} for v, a in resultado["aportes_logit"].items()
             ],
         )
 
 
 def cargar_predictor() -> Predictor:
-    if settings.model_backend == "simulado":
-        return PredictorSimulado()
-    raise RuntimeError(
-        f"Backend de modelo no implementado: '{settings.model_backend}'. "
-        "Agregar la clase en app/modelo.py y registrarla aquí."
-    )
+    return PredictorLogistica()

@@ -141,11 +141,54 @@ sesión incluso para descargar**: sin credenciales, `dvc pull` falla con "Checko
 - Para subir resultados nuevos: `git commit` y `git push` para el código y los `.lock`;
   `dvc push` para datos y modelos.
 
+## Pipeline
+
+Las etapas con `foreach` se repiten por municipio y aparecen como `<etapa>@<municipio>`
+(por ejemplo `train_logistica@magangue`).
+
+| Etapa | Script | Qué hace |
+|---|---|---|
+| `eda` | `src/eda_bolivar.py` | Calidad de datos y series del top 5 de municipios de Bolívar. |
+| `clima` | `src/clima.py` | Clima diario 2007–2025 de la cabecera urbana desde Google Earth Engine. **Congelada:** usa el CSV guardado en DagsHub. |
+| `cruce` | `src/cruce_ambiental_epidemiologico.py` | Une casos y clima por semana epidemiológica del INS. |
+| `features` | `src/features/build_features.py` | Rezagos, medias móviles, canal endémico, etiqueta de brote a 4 semanas y variables relativas al umbral. |
+| `train_logistica` | `src/models/train_logistica.py` | Regresión logística (modelo operativo) con walk-forward anual. |
+| `train` | `src/models/train_xgboost.py` | XGBoost con walk-forward anual. |
+| `train_lstm` | `src/models/train_lstm.py` | LSTM con walk-forward anual. |
+| `evaluate` | `src/models/evaluate_model.py` | Compara modelos y líneas base: AUC con IC por bootstrap de bloques y métricas por brote. |
+| `resumen` | `src/models/resumen_municipios.py` | Tabla comparativa de todos los municipios. |
+
+Volver a extraer el clima requiere una cuenta de Google Earth Engine:
+`dvc repro --force clima@<municipio>`.
+
+## Configuración
+
+Todo se configura en [params.yaml](params.yaml):
+
+| Sección | Qué controla |
+|---|---|
+| `municipios` | Municipios incluidos (nombre en SIVIGILA y código DIVIPOLA). |
+| `target` | Definición de brote: `metodo` (`bortman` o `percentil`), años de la ventana, semanas consecutivas y horizonte. |
+| `particion` | Años de entrenamiento (hasta 2019), validación (2020–2022) y prueba (2023–2025). |
+| `logistica`, `train`, `lstm` | Hiperparámetros de cada modelo. `train` es XGBoost. |
+| `eventos` | Cómo se cuentan los brotes avisados. |
+| `evaluate` | Bootstrap de los intervalos de confianza. |
+
+**Las decisiones de diseño se toman solo con validación (2020–2022).** La prueba (2023–2025) se
+consulta para el reporte final.
+
+Para agregar un municipio:
+
+1. Añádelo en `municipios`.
+2. Genera su polígono con `src/geo/poligonos_mgn.py`.
+3. Extrae su clima con `dvc repro --force clima@<municipio>`.
+4. Corre `dvc repro`.
+
 ## Prototipo: API y dashboard
 
 Componentes:
 
-- `src_api/`: API FastAPI (modelo simulado por ahora). Ver [src_api/README.md](src_api/README.md).
+- `src_api/`: API FastAPI. Ver [src_api/README.md](src_api/README.md).
 - `src_dashboard/`: interfaz Streamlit. Ver [src_dashboard/README.md](src_dashboard/README.md).
 - `docker-compose.yml`: levanta ambos servicios.
 
@@ -214,49 +257,6 @@ Enlaces:
 
 Si el dashboard no conecta con la API, revise que la terminal 1 siga corriendo y que `API_URL` apunte a `http://localhost:8000/api/v1` (valor por defecto).
 
-## Pipeline
-
-Las etapas con `foreach` se repiten por municipio y aparecen como `<etapa>@<municipio>`
-(por ejemplo `train_logistica@magangue`).
-
-| Etapa | Script | Qué hace |
-|---|---|---|
-| `eda` | `src/eda_bolivar.py` | Calidad de datos y series del top 5 de municipios de Bolívar. |
-| `clima` | `src/clima.py` | Clima diario 2007–2025 de la cabecera urbana desde Google Earth Engine. **Congelada:** usa el CSV guardado en DagsHub. |
-| `cruce` | `src/cruce_ambiental_epidemiologico.py` | Une casos y clima por semana epidemiológica del INS. |
-| `features` | `src/features/build_features.py` | Rezagos, medias móviles, canal endémico, etiqueta de brote a 4 semanas y variables relativas al umbral. |
-| `train_logistica` | `src/models/train_logistica.py` | Regresión logística (modelo operativo) con walk-forward anual. |
-| `train` | `src/models/train_xgboost.py` | XGBoost con walk-forward anual. |
-| `train_lstm` | `src/models/train_lstm.py` | LSTM con walk-forward anual. |
-| `evaluate` | `src/models/evaluate_model.py` | Compara modelos y líneas base: AUC con IC por bootstrap de bloques y métricas por brote. |
-| `resumen` | `src/models/resumen_municipios.py` | Tabla comparativa de todos los municipios. |
-
-Volver a extraer el clima requiere una cuenta de Google Earth Engine:
-`dvc repro --force clima@<municipio>`.
-
-## Configuración
-
-Todo se configura en [params.yaml](params.yaml):
-
-| Sección | Qué controla |
-|---|---|
-| `municipios` | Municipios incluidos (nombre en SIVIGILA y código DIVIPOLA). |
-| `target` | Definición de brote: `metodo` (`bortman` o `percentil`), años de la ventana, semanas consecutivas y horizonte. |
-| `particion` | Años de entrenamiento (hasta 2019), validación (2020–2022) y prueba (2023–2025). |
-| `logistica`, `train`, `lstm` | Hiperparámetros de cada modelo. `train` es XGBoost. |
-| `eventos` | Cómo se cuentan los brotes avisados. |
-| `evaluate` | Bootstrap de los intervalos de confianza. |
-
-**Las decisiones de diseño se toman solo con validación (2020–2022).** La prueba (2023–2025) se
-consulta para el reporte final.
-
-Para agregar un municipio:
-
-1. Añádelo en `municipios`.
-2. Genera su polígono con `src/geo/poligonos_mgn.py`.
-3. Extrae su clima con `dvc repro --force clima@<municipio>`.
-4. Corre `dvc repro`.
-
 ## Estructura
 
 ```
@@ -275,6 +275,10 @@ src/
   geo/                      polígonos del MGN
   features/                 construcción de la matriz de características
   models/                   entrenamiento, evaluación y utilidades comunes (comun.py)
+src_api/
+
+src_dashboard/
+
 ```
 
 ## Referencias

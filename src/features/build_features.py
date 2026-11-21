@@ -23,8 +23,11 @@ def umbral_movil(df, col, params):
     Métodos (params["metodo"]):
     - "percentil": percentil `percentil` de esos años (por defecto P75).
     - "bortman": límite superior del canal de Bortman (1999): intervalo de confianza del 95 %
-      (t de Student) de la media geométrica. Los ceros se manejan sumando un desplazamiento
-      mínimo (0,001), que según Umaña et al. (2026) rinde mejor que sumar 1.
+      (t de Student) de la media geométrica. Los ceros se manejan sumando 1 a los casos, como
+      Bortman (1999) y el INS. Umaña et al. (2026) proponen 0,001, pero con 5 años de ventana
+      un solo cero lleva log(0,001) = -6,9, infla la desviación y dispara el umbral: en estos
+      municipios dejaba el 26 % de las semanas con un umbral mayor que el máximo de casos
+      observado, es decir, sin brote posible.
 
     Devuelve el umbral (límite superior) y la línea central del canal: la media geométrica en
     Bortman y la mediana en el método de percentil. Entre ambas está la zona de alerta.

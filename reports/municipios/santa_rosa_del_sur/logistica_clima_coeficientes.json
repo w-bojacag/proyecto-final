@@ -1,38 +1,38 @@
 {
     "ratio_casos_umbral_objetivo": {
-        "coeficiente": 1.2044850551175197,
-        "razon_odds_por_desviacion": 3.335041273381419,
-        "desviacion_log1p": 0.43525707340252845
+        "coeficiente": 1.2570753848719312,
+        "razon_odds_por_desviacion": 3.5151260487867164,
+        "desviacion_log1p": 0.48738538335018555
     },
     "ratio_roll4_umbral_objetivo": {
-        "coeficiente": 1.449424375211411,
-        "razon_odds_por_desviacion": 4.260661266920284,
-        "desviacion_log1p": 0.40367702566123065
+        "coeficiente": 1.454599838127998,
+        "razon_odds_por_desviacion": 4.282769321668356,
+        "desviacion_log1p": 0.4671749477626409
     },
     "exceso_actual": {
-        "coeficiente": -0.00819611739168918,
-        "razon_odds_por_desviacion": 0.9918373792019846,
-        "desviacion_log1p": 0.457716010330588
+        "coeficiente": 0.21330506022371326,
+        "razon_odds_por_desviacion": 1.237762185664568,
+        "desviacion_log1p": 0.505970456580295
     },
     "precipitation_mm_roll_mean_8": {
-        "coeficiente": 0.34938836513359534,
-        "razon_odds_por_desviacion": 1.4181998627832513,
+        "coeficiente": -0.005689532924024495,
+        "razon_odds_por_desviacion": 0.9943266218162594,
         "desviacion": 19.693968986237078
     },
     "air_temp_mean_c_roll_mean_8": {
-        "coeficiente": -0.7055618484978712,
-        "razon_odds_por_desviacion": 0.4938310380698562,
+        "coeficiente": -0.08998497630110835,
+        "razon_odds_por_desviacion": 0.9139449160013063,
         "desviacion": 0.8879935958005467
     },
     "lst_day_c_roll_mean_8": {
-        "coeficiente": 0.334942609973442,
-        "razon_odds_por_desviacion": 1.3978601596887275,
+        "coeficiente": -0.13111760763302052,
+        "razon_odds_por_desviacion": 0.8771146129513592,
         "desviacion": 2.0872186612972365
     },
     "dewpoint_c_roll_mean_8": {
-        "coeficiente": -0.8784178386473022,
-        "razon_odds_por_desviacion": 0.4154396845975613,
+        "coeficiente": -0.7497274258356873,
+        "razon_odds_por_desviacion": 0.47249532520860393,
         "desviacion": 0.7739011405104226
     },
-    "intercepto": -2.982567948524737
+    "intercepto": -1.820047720041971
 }

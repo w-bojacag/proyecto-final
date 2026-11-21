@@ -48,6 +48,19 @@ def cargar_modelo():
     return api.get_modelo()
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def cargar_estado() -> dict:
+    return api.get_estado_datos()
+
+
+def serie_o_vacia(municipio_id: str) -> pd.DataFrame:
+    """Serie del municipio, o un DataFrame vacío si no hay datos cargados."""
+    try:
+        return cargar_serie(municipio_id)
+    except ApiError:
+        return pd.DataFrame(columns=["semana", "casos", "lluvia_mm", "temp_media_c", "umbral_canal", "exceso"])
+
+
 @st.cache_data(show_spinner=False)
 def cargar_geo(municipio_ids: tuple[str, ...]) -> dict:
     """FeatureCollection con una feature por municipio; el id de la feature es el municipio_id."""
@@ -220,6 +233,7 @@ def grafica_canal_clima(df: pd.DataFrame) -> go.Figure:
     fig = make_subplots(
         rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.07,
         subplot_titles=("Casos y umbral del canal endémico", "Lluvia (mm)", "Temperatura media (°C)"),
+        specs=[[{"secondary_y": True}], [{}], [{}]],
     )
     for inicio, fin in tramos_exceso(df):
         fig.add_vrect(
@@ -230,14 +244,23 @@ def grafica_canal_clima(df: pd.DataFrame) -> go.Figure:
                              mode="lines", line=dict(color="#1f77b4")), row=1, col=1)
     fig.add_trace(go.Scatter(x=df["semana"], y=df["umbral_canal"], name="Umbral canal endémico",
                              mode="lines", line=dict(color="#d62728", dash="dash")), row=1, col=1)
+    # Etiqueta (brote dentro de 4 semanas) en el eje derecho 0–1, como línea de escalón roja translúcida.
+    if "etiqueta" in df.columns and df["etiqueta"].notna().any():
+        fig.add_trace(go.Scatter(
+            x=df["semana"], y=df["etiqueta"].astype(float), name="Etiqueta: brote en 4 semanas",
+            mode="lines", line=dict(color="rgba(214, 39, 40, 0.55)", width=2, shape="hv"),
+            fill="tozeroy", fillcolor="rgba(214, 39, 40, 0.15)",
+        ), row=1, col=1, secondary_y=True)
+        fig.update_yaxes(title_text="Etiqueta (0 / 1)", range=[0, 1], tickvals=[0, 1],
+                         showgrid=False, secondary_y=True, row=1, col=1)
     fig.add_trace(go.Scatter(x=df["semana"], y=df["lluvia_mm"], name="Lluvia",
                              mode="lines", line=dict(color="#2ca02c")), row=2, col=1)
     fig.add_trace(go.Scatter(x=df["semana"], y=df["temp_media_c"], name="Temperatura",
                              mode="lines", line=dict(color="#ff7f0e")), row=3, col=1)
-    fig.update_yaxes(title_text="Casos", row=1, col=1)
+    fig.update_yaxes(title_text="Casos", row=1, col=1, secondary_y=False)
     fig.update_yaxes(title_text="mm", row=2, col=1)
     fig.update_yaxes(title_text="°C", row=3, col=1)
-    fig.update_xaxes(title_text="Semana", row=3, col=1)
+    fig.update_xaxes(title_text="Semana epidemiológica (inicio)", row=3, col=1)
     fig.update_layout(height=760, legend=dict(orientation="h", y=-0.08), margin=dict(t=60, b=40))
     return fig
 
@@ -296,178 +319,191 @@ st.caption("Apoyo a la decisión. No reemplaza el criterio epidemiológico.")
 
 try:
     municipios = cargar_municipios()
-    rango = cargar_rango()
     modelo_info = cargar_modelo()
+    estado = cargar_estado()
 except ApiError as exc:
     st.error(str(exc))
     st.info("Inicie la API (docker compose up, o uvicorn en src_api/).")
     st.stop()
 
+modo = estado["modo"]
+st.caption(
+    "Datos: demo (simulados)." if modo == "demo"
+    else "Datos: SQLite (cargados desde CSV en la pestaña Configuración)."
+)
+try:
+    rango = cargar_rango()
+    error_rango = ""
+except ApiError as exc:
+    # Sin datos (p. ej. modo SQLite sin CSV cargados): las pestañas de datos lo indican;
+    # la pestaña de configuración sigue disponible.
+    rango, error_rango = None, str(exc)
+
 nombres = {m["id"]: m["nombre"] for m in municipios}
 geo = cargar_geo(tuple(m["id"] for m in municipios))
 
 opciones = {m["nombre"]: m["id"] for m in municipios}
-try:
-    # Todos los municipios comparten las mismas semanas: sirve para fechas y semana de corte.
-    serie = cargar_serie(municipios[0]["id"])
-except ApiError as exc:
-    st.error(str(exc))
-    st.stop()
 
-(modelo_info.get("advertencia", ""))
+if rango is not None:
+    fecha_min = pd.Timestamp(rango["fecha_corte_min"]).date()
+    fecha_max = pd.Timestamp(rango["fecha_corte_max"]).date()
 
-fecha_min = pd.Timestamp(rango["fecha_corte_min"]).date()
-fecha_max = pd.Timestamp(rango["fecha_corte_max"]).date()
-
-tab_mapa, tab_casos, tab_modelo, tab_acerca = st.tabs([
+tab_mapa, tab_casos, tab_modelo, tab_config, tab_acerca = st.tabs([
     "🗺️ 1. Mapa de alertas",
     "📈 2. Casos y canal endémico",
     "🧪 3. Detalle del modelo",
-    "ℹ️ 4. Acerca de",
+    "⚙️ 4. Configuración",
+    "ℹ️ 5. Acerca de",
 ])
 
 # ---------- 0. Mapa de alertas ----------
 with tab_mapa:
-    # Barra superior: calendario, proyección y umbral
-    b1, b2, b3, b4 = st.columns([2, 2, 2, 2], vertical_alignment="bottom")
-    with b1:
-        fecha_sel = st.date_input("📅 Fecha de corte", value=fecha_max,
-                                  min_value=fecha_min, max_value=fecha_max, key="fecha_mapa")
-    with b2:
-        st.write("")
-        st.markdown(
-            """<style>
-            button[kind="primary"] {
-                background-color: #1f77b4 !important; border-color: #1f77b4 !important;
-                color: #ffffff !important;
-            }
-            button[kind="primary"]:hover {
-                background-color: #17629a !important; border-color: #17629a !important;
-            }
-            button[data-testid="stBaseButton-primary"] *,
-            button[data-testid="stBaseButton-primary"] p {
-                color: #ffffff !important;
-            }
-            </style>""",
-            unsafe_allow_html=True,
+    if rango is None:
+        st.info(
+            f"Aún no hay datos para el mapa ({error_rango}). "
+            "Cargue los datos en la pestaña Configuración."
         )
-        proyectar = st.button(
-            f"Proyectar {modelo_info['horizonte_semanas']} semanas", type="primary",
-            use_container_width=True, key="proyectar",
-        )
-    with b3:
-        st.metric("Umbral de alerta", f"{modelo_info['umbral_decision']:.0%}",
-                  help="Hay alerta cuando la probabilidad de exceso es igual o mayor a este valor.")
-    with b4:
-        st.metric("Semana de corte", str(semana_de_corte(serie, fecha_sel)["semana"].date()
-                                         if semana_de_corte(serie, fecha_sel) is not None else "—"))
-
-    if proyectar:
-        resultados, errores = {}, []
-        for m in municipios:
-            try:
-                resultados[m["id"]] = api.post_prediccion(m["id"], fecha_sel.isoformat())
-            except ApiError as exc:
-                errores.append(f"{m['nombre']}: {exc}")
-        st.session_state["proyeccion"] = {"fecha": fecha_sel.isoformat(), "resultados": resultados}
-        st.session_state["modal_ultimo"] = None
-        for e in errores:
-            st.error(e)
-
-    proy = st.session_state.get("proyeccion")
-    proy_vigente = proy["resultados"] if proy and proy["fecha"] == fecha_sel.isoformat() else None
-    if proy and not proy_vigente:
-        st.info("La proyección mostrada corresponde a otra fecha. Pulse «Proyectar» para actualizarla.")
-    elif proy_vigente:
-        n_alertas = sum(1 for p in proy_vigente.values() if p["alerta"])
-        st.success(f"Proyección para la semana objetivo "
-                   f"{next(iter(proy_vigente.values()))['semana_objetivo']}: "
-                   f"{n_alertas} municipio(s) con alerta.")
     else:
-        st.info("Seleccione una fecha de corte y pulse «Proyectar» para ver la probabilidad por municipio.")
+        # Barra superior: calendario, proyección y umbral
+        b1, b2, b3, b4 = st.columns([2, 2, 2, 2], vertical_alignment="bottom")
+        with b1:
+            fecha_sel = st.date_input("📅 Fecha de corte", value=fecha_max,
+                                      min_value=fecha_min, max_value=fecha_max, key="fecha_mapa")
+        with b2:
+            st.write("")
+            st.markdown(
+                """<style>
+                button[kind="primary"] {
+                    background-color: #1f77b4 !important; border-color: #1f77b4 !important;
+                    color: #ffffff !important;
+                }
+                button[kind="primary"]:hover {
+                    background-color: #17629a !important; border-color: #17629a !important;
+                }
+                button[data-testid="stBaseButton-primary"] *,
+                button[data-testid="stBaseButton-primary"] p {
+                    color: #ffffff !important;
+                }
+                </style>""",
+                unsafe_allow_html=True,
+            )
+            proyectar = st.button(
+                f"Proyectar {modelo_info['horizonte_semanas']} semanas", type="primary",
+                use_container_width=True, key="proyectar",
+            )
+        with b3:
+            st.metric("Umbral de alerta", f"{modelo_info['umbral_decision']:.0%}",
+                      help="Hay alerta cuando la probabilidad de exceso es igual o mayor a este valor.")
+        with b4:
+            fila_ref = semana_de_corte(serie_o_vacia(municipios[0]["id"]), fecha_sel)
+            st.metric("Semana de corte", str(fila_ref["semana"].date()) if fila_ref is not None else "—")
 
-    alertas = frozenset(mid for mid, p in proy_vigente.items() if p["alerta"]) if proy_vigente else frozenset()
-    probs = {mid: p["probabilidad_exceso"] for mid, p in proy_vigente.items()} if proy_vigente else None
+        if proyectar:
+            resultados, errores = {}, []
+            for m in municipios:
+                try:
+                    resultados[m["id"]] = api.post_prediccion(m["id"], fecha_sel.isoformat())
+                except ApiError as exc:
+                    errores.append(f"{m['nombre']}: {exc}")
+            st.session_state["proyeccion"] = {"fecha": fecha_sel.isoformat(), "resultados": resultados}
+            st.session_state["modal_ultimo"] = None
+            for e in errores:
+                st.error(e)
 
-    def bloque_mapa():
-        # El fragmento se redibuja cada 0.25 s sólo si hay alertas: así el color pulsa suavemente.
-        st.pydeck_chart(
-            mapa_municipios(geo, probs, nombres, alertas, fase_pulso(time.time())),
-            height=520, use_container_width=True,
-        )
+        proy = st.session_state.get("proyeccion")
+        proy_vigente = proy["resultados"] if proy and proy["fecha"] == fecha_sel.isoformat() else None
+        if proy and not proy_vigente:
+            st.info("La proyección mostrada corresponde a otra fecha. Pulse «Proyectar» para actualizarla.")
+        elif proy_vigente:
+            n_alertas = sum(1 for p in proy_vigente.values() if p["alerta"])
+            st.success(f"Proyección para la semana objetivo "
+                       f"{next(iter(proy_vigente.values()))['semana_objetivo']}: "
+                       f"{n_alertas} municipio(s) con alerta.")
+        else:
+            st.info("Seleccione una fecha de corte y pulse «Proyectar» para ver la probabilidad por municipio.")
 
-    col_mapa, col_tabla = st.columns([1.3, 1])
-    with col_mapa:
-        st.fragment(run_every=0.25 if alertas else None)(bloque_mapa)()
-        st.caption(
-            "Gris: sin proyección. Amarillo a rojo: probabilidad de exceso. "
-            "Rojo parpadeante: municipio con alerta. El mapa base requiere internet."
-        )
+        alertas = frozenset(mid for mid, p in proy_vigente.items() if p["alerta"]) if proy_vigente else frozenset()
+        probs = {mid: p["probabilidad_exceso"] for mid, p in proy_vigente.items()} if proy_vigente else None
 
-    with col_tabla:
-        st.markdown("**Municipios**")
-        st.markdown(
-            """<style>
-            div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-tabla)) {
-                padding: 8px !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-tabla)) > div {
-                padding: 0 !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-tabla)) [data-testid="stVerticalBlock"] {
-                gap: 0.1rem !important; padding-top: 0 !important; padding-bottom: 0 !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla) [data-testid="stElementContainer"]:has(.fila-tabla),
-            div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla) [data-testid="stElementContainer"]:has(.fila-alerta) {
-                display: none !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-alerta):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-alerta)) {
-                background-color: #833535; border-color: #833535;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-alerta):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-alerta)) * {
-                color: #ffffff !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"] button, div[data-testid="stVerticalBlockBorderWrapper"] button * {
-                color: #31333F !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"] button:not([data-testid="stBaseButton-primary"]) {
-                background-color: #000000 !important; border-color: #000000 !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"] button:not([data-testid="stBaseButton-primary"]):hover {
-                background-color: #000000 !important; border-color: #000000 !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"] button:not([data-testid="stBaseButton-primary"]), div[data-testid="stVerticalBlockBorderWrapper"] button:not([data-testid="stBaseButton-primary"]) * {
-                color: #ffffff !important;
-            }
-            </style>""",
-            unsafe_allow_html=True,
-        )
-        ancho = [0.5, 2.2, 2.2, 1.2, 1.2, 1.5]
-        encabezado = st.columns(ancho)
-        for col, texto in zip(encabezado, ["", "Municipio", "Prob.", "Casos", "Umbral", ""]):
-            col.markdown(f"**{texto}**")
+        def bloque_mapa():
+            # El fragmento se redibuja cada 0.25 s sólo si hay alertas: así el color pulsa suavemente.
+            st.pydeck_chart(
+                mapa_municipios(geo, probs, nombres, alertas, fase_pulso(time.time())),
+                height=520, use_container_width=True,
+            )
 
-        for m in municipios:
-            mid = m["id"]
-            pred = proy_vigente.get(mid) if proy_vigente else None
-            fila_corte = semana_de_corte(cargar_serie(mid), fecha_sel)
-            en_alerta = bool(pred and pred["alerta"])
-            with st.container(border=True):
-                st.markdown('<span class="fila-tabla"></span>', unsafe_allow_html=True)
-                if en_alerta:
-                    st.markdown('<span class="fila-alerta"></span>', unsafe_allow_html=True)
-                c = st.columns(ancho, vertical_alignment="center")
-                c[0].markdown("⚠️" if en_alerta else "")
-                c[1].markdown(f"**{m['nombre']}**" if en_alerta else m["nombre"])
-                if pred:
-                    c[2].progress(pred["probabilidad_exceso"], text=f"{pred['probabilidad_exceso']:.0%}")
-                else:
-                    c[2].markdown("—")
-                c[3].markdown(str(int(fila_corte["casos"])) if fila_corte is not None else "—")
-                c[4].markdown(f"{float(fila_corte['umbral_canal']):.0f}" if fila_corte is not None else "—")
-                if c[5].button("🔍 Ver", key=f"ver_{mid}", disabled=not pred,
-                               help="Ver las variables de este municipio"):
-                    modal_detalle(pred, fila_corte.to_dict())
+        col_mapa, col_tabla = st.columns([1.3, 1])
+        with col_mapa:
+            st.fragment(run_every=0.25 if alertas else None)(bloque_mapa)()
+            st.caption(
+                "Gris: sin proyección. Amarillo a rojo: probabilidad de exceso. "
+                "Rojo parpadeante: municipio con alerta. El mapa base requiere internet."
+            )
+
+        with col_tabla:
+            st.markdown("**Municipios**")
+            st.markdown(
+                """<style>
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-tabla)) {
+                    padding: 8px !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-tabla)) > div {
+                    padding: 0 !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-tabla)) [data-testid="stVerticalBlock"] {
+                    gap: 0.1rem !important; padding-top: 0 !important; padding-bottom: 0 !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla) [data-testid="stElementContainer"]:has(.fila-tabla),
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-tabla) [data-testid="stElementContainer"]:has(.fila-alerta) {
+                    display: none !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-alerta):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-alerta)) {
+                    background-color: #833535; border-color: #833535;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.fila-alerta):not(:has(div[data-testid="stVerticalBlockBorderWrapper"] .fila-alerta)) * {
+                    color: #ffffff !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"] button, div[data-testid="stVerticalBlockBorderWrapper"] button * {
+                    color: #31333F !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"] button:not([data-testid="stBaseButton-primary"]) {
+                    background-color: #000000 !important; border-color: #000000 !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"] button:not([data-testid="stBaseButton-primary"]):hover {
+                    background-color: #000000 !important; border-color: #000000 !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"] button:not([data-testid="stBaseButton-primary"]), div[data-testid="stVerticalBlockBorderWrapper"] button:not([data-testid="stBaseButton-primary"]) * {
+                    color: #ffffff !important;
+                }
+                </style>""",
+                unsafe_allow_html=True,
+            )
+            ancho = [0.5, 2.2, 2.2, 1.2, 1.2, 1.5]
+            encabezado = st.columns(ancho)
+            for col, texto in zip(encabezado, ["", "Municipio", "Prob.", "Casos", "Umbral", ""]):
+                col.markdown(f"**{texto}**")
+
+            for m in municipios:
+                mid = m["id"]
+                pred = proy_vigente.get(mid) if proy_vigente else None
+                fila_corte = semana_de_corte(serie_o_vacia(mid), fecha_sel)
+                en_alerta = bool(pred and pred["alerta"])
+                with st.container(border=True):
+                    st.markdown('<span class="fila-tabla"></span>', unsafe_allow_html=True)
+                    if en_alerta:
+                        st.markdown('<span class="fila-alerta"></span>', unsafe_allow_html=True)
+                    c = st.columns(ancho, vertical_alignment="center")
+                    c[0].markdown("⚠️" if en_alerta else "")
+                    c[1].markdown(f"**{m['nombre']}**" if en_alerta else m["nombre"])
+                    if pred:
+                        c[2].progress(pred["probabilidad_exceso"], text=f"{pred['probabilidad_exceso']:.0%}")
+                    else:
+                        c[2].markdown("—")
+                    c[3].markdown(str(int(fila_corte["casos"])) if fila_corte is not None else "—")
+                    c[4].markdown(f"{float(fila_corte['umbral_canal']):.0f}" if fila_corte is not None else "—")
+                    if c[5].button("🔍 Ver", key=f"ver_{mid}", disabled=not pred,
+                                   help="Ver las variables de este municipio"):
+                        modal_detalle(pred, fila_corte.to_dict())
 
 # ---------- 1. Casos y canal ----------
 with tab_casos:
@@ -482,9 +518,11 @@ with tab_casos:
     if serie_canal is not None:
         st.write(
             "Las zonas sombreadas marcan las épocas de **alto riesgo**: semanas en que los casos "
-            "superan el umbral del canal endémico, seguidas. "
+            "superan el umbral del canal endémico, seguidos. "
             "Al mover o hacer zoom en una gráfica, se mueven todas."
         )
+        if modo == "sqlite":
+            st.caption("Datos semanales cargados desde caracteristicas.csv (pestaña Configuración).")
         st.plotly_chart(grafica_canal_clima(serie_canal), use_container_width=True)
         c1, c2, c3 = st.columns(3)
         c1.metric("Semanas registradas", len(serie_canal))
@@ -503,7 +541,63 @@ with tab_modelo:
     }))
     st.info("")
 
-# ---------- 4. Acerca de ----------
+# ---------- 4. Configuración ----------
+with tab_config:
+    st.subheader("Configuración de datos")
+    if modo == "sqlite":
+        st.success("Modo activo: **SQLite**. Las pestañas muestran los datos cargados desde CSV.")
+    else:
+        st.info(
+            "Modo activo: **demo** (datos simulados). Los CSV que cargue se guardan en SQLite, "
+            "pero no se usan hasta iniciar la API con `MODO_DATOS=sqlite`."
+        )
+
+    st.markdown("**Cargar datos semanales de un municipio**")
+    st.caption(
+        "Archivo: `data/processed/municipios/<municipio>/caracteristicas.csv` del pipeline. "
+        "Se usan las columnas `ANO`, `SEMANA`, `casos_confirmados_o_probables`, `precipitation_mm`, "
+        "`air_temp_mean_c` y `umbral_brote`; las demás se ignoran. Las semanas que ya existen se "
+        "**actualizan**, las nuevas se **agregan** y las que no vienen en el archivo se conservan."
+    )
+    col_muni, col_archivo = st.columns([1, 2], vertical_alignment="bottom")
+    with col_muni:
+        muni_cfg = st.selectbox("Municipio", list(opciones.keys()), key="muni_config")
+    with col_archivo:
+        archivo_csv = st.file_uploader("Archivo CSV", type=["csv"], key="csv_config")
+    if st.button("Cargar en SQLite", type="primary", disabled=archivo_csv is None, key="btn_cargar_csv"):
+        try:
+            resp = api.post_csv(opciones[muni_cfg], archivo_csv.name, archivo_csv.getvalue())
+            st.cache_data.clear()
+            st.success(
+                f"{muni_cfg}: {resp['nuevas']} semanas nuevas y {resp['actualizadas']} actualizadas. "
+                f"Total guardado: {resp['semanas']} semanas ({resp['primer_periodo']} a {resp['ultimo_periodo']})."
+            )
+        except ApiError as exc:
+            st.error(f"No se cargó el archivo: {exc}")
+
+    st.markdown("**Estado de los datos en SQLite**")
+    st.dataframe(pd.DataFrame([{
+        "Municipio": m["nombre"],
+        "Cargado": "Sí" if m["cargado"] else "No",
+        "Semanas": m["semanas"],
+        "Desde": m["primer_periodo"] or "—",
+        "Hasta": m["ultimo_periodo"] or "—",
+        "Última carga": (f"{m['ultimas_nuevas']} nuevas, {m['ultimas_actualizadas']} actualizadas"
+                         if m["cargado"] else "—"),
+        "Archivo": m["archivo"] or "—",
+        "Cargado el": (m["cargado_en"] or "—").replace("T", " ")[:19],
+    } for m in estado["municipios"]]), hide_index=True, use_container_width=True)
+
+    with st.expander("Cómo cambiar entre demo y SQLite"):
+        st.markdown(
+            "La API lee la variable `MODO_DATOS` al iniciar:\n\n"
+            "- `MODO_DATOS=demo` (por defecto): datos simulados. Las predicciones funcionan.\n"
+            "- `MODO_DATOS=sqlite`: datos semanales de la base SQLite, cargados desde los CSV. "
+            "Las predicciones usan esos datos.\n\n"
+            "Para cambiarla con docker compose, defina `MODO_DATOS` antes de levantar los servicios."
+        )
+
+# ---------- 5. Acerca de ----------
 with tab_acerca:
     st.subheader("Acerca de este proyecto")
     st.write(

@@ -49,3 +49,15 @@ def post_prediccion(municipio_id: str, fecha_corte: str) -> dict:
 
 def get_modelo() -> dict:
     return _request("GET", "/modelo")
+
+
+def get_estado_datos() -> dict:
+    return _request("GET", "/datos/estado")
+
+
+def post_csv(municipio_id: str, nombre_archivo: str, contenido: bytes) -> dict:
+    return _request(
+        "POST",
+        f"/datos/{municipio_id}/csv",
+        files={"archivo": (nombre_archivo, contenido, "text/csv")},
+    )

@@ -12,8 +12,42 @@ API FastAPI que expone el modelo de predicción de excesos de dengue. **Por ahor
 | GET | `/api/v1/municipios/{id}/serie` | Casos, lluvia, temperatura, umbral del canal y exceso |
 | POST | `/api/v1/prediccion` | Probabilidad de exceso a 4 semanas para una fecha de corte |
 | GET | `/api/v1/modelo` | Información del modelo y estado de métricas |
+| GET | `/api/v1/datos/estado` | Modo de datos activo y lo cargado en SQLite por municipio |
+| POST | `/api/v1/datos/{municipio_id}/csv` | Carga `caracteristicas.csv` semanal en SQLite (actualiza las semanas existentes y agrega las nuevas) |
+
+## Modos de datos
+
+- **`MODO_DATOS=demo`** (por defecto): series simuladas. Todos los endpoints funcionan, incluida la predicción.
+- **`MODO_DATOS=sqlite`**: `municipios/{id}/serie`, `rango-fechas` y `prediccion` leen de la base SQLite (`SQLITE_PATH`).
+
+Los CSV se pueden cargar en cualquier modo; sólo se usan en `sqlite`.
+
+### Formato: `caracteristicas.csv` del pipeline
+
+Se carga el archivo `data/processed/municipios/<municipio>/caracteristicas.csv` tal cual lo genera el pipeline (una fila por año y semana epidemiológica). La API usa estas columnas y ignora el resto:
+
+| Columna del CSV | Se guarda como | Significado |
+|---|---|---|
+| `ANO` | `anio` | Año epidemiológico |
+| `SEMANA` | `semana` | Semana epidemiológica (1 a 53) |
+| `casos_confirmados_o_probables` | `casos` | Casos de dengue de la semana (confirmados o probables) |
+| `precipitation_mm` | `lluvia_mm` | Lluvia acumulada de la semana (mm) |
+| `air_temp_mean_c` | `temp_media_c` | Temperatura media de la semana (°C) |
+| `umbral_brote` | `umbral_canal` | Límite superior del canal endémico de Bortman |
+| `target_brote_t4` (opcional) | `etiqueta` | Brote dentro de 4 semanas (0 o 1). Si no viene en el archivo, la gráfica no la muestra |
+
+- `exceso` = `casos > umbral_canal`, igual que `es_brote_actual` en el pipeline.
+- La fecha de inicio de cada semana (domingo) se calcula con el criterio INS/SIVIGILA.
+- **Carga por actualización:** la clave es `(municipio, ANO, SEMANA)`. Si la semana ya existe se **actualiza**; si no existe se **agrega**; las semanas que no vienen en el archivo se **conservan**. La respuesta indica cuántas fueron nuevas y cuántas actualizadas.
+- Si faltan columnas, hay valores vacíos o no numéricos, o hay semanas repetidas, la API responde `422` con el detalle.
 
 Ejemplo:
+
+```bash
+curl -F "archivo=@data/processed/municipios/cartagena/caracteristicas.csv" http://localhost:8000/api/v1/datos/cartagena/csv
+```
+
+Ejemplo de predicción:
 
 ```json
 POST /api/v1/prediccion
@@ -50,11 +84,14 @@ Verificación rápida: `http://localhost:8000/api/v1/health` debe responder `{"e
 
 | Variable | Por defecto | Descripción |
 |---|---|---|
+| `MODO_DATOS` | `demo` | Fuente de las series: `demo` (simuladas) o `sqlite` (CSV cargados) |
+| `SQLITE_PATH` | `src_api/data/dengue.sqlite` | Archivo de la base SQLite (se crea al cargar el primer CSV) |
 | `MODEL_BACKEND` | `simulado` | Backend del modelo (ver `app/modelo.py`) |
 | `MODEL_VERSION` | `simulado-0.1` | Versión reportada en cada respuesta |
 | `HORIZONTE_SEMANAS` | `4` | Semanas de anticipación |
 | `UMBRAL_DECISION` | `0.5` | Probabilidad a partir de la cual hay alerta (pendiente de validar) |
 | `ANIO_ENTRENAMIENTO_FIN` | `2019` | Fin del periodo de entrenamiento (propuesta: 2007–2019) |
+| `ANIO_MINIMO_GRAFICOS` | `2012` | Primer año que devuelve `municipios/{id}/serie` (gráficas del canal endémico y clima). Los años anteriores se omiten; la predicción no se ve afectada |
 | `SEMILLA_SIMULACION` | `42` | Semilla de los datos simulados |
 
 ## Cómo conectar el modelo real

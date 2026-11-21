@@ -13,7 +13,12 @@ from functools import lru_cache
 import numpy as np
 import pandas as pd
 
+from . import almacen
 from .config import settings
+
+MODOS_DATOS = ("demo", "sqlite")
+if settings.modo_datos not in MODOS_DATOS:
+    raise RuntimeError(f"MODO_DATOS debe ser 'demo' o 'sqlite', no '{settings.modo_datos}'.")
 
 MUNICIPIOS: dict[str, str] = {
     "cartagena": "Cartagena",
@@ -58,6 +63,7 @@ def _serie_completa() -> pd.DataFrame:
 
     df = pd.concat(frames, ignore_index=True)
     df["anio"] = df["semana"].dt.year
+    df["mes"] = df["semana"].dt.month
     df["semana_anio"] = df["semana"].dt.isocalendar().week.clip(upper=52).astype(int)
 
     # Canal endémico simulado: percentil 75 por semana del año, usando solo años de
@@ -73,17 +79,38 @@ def _serie_completa() -> pd.DataFrame:
     df["umbral_canal"] = df["umbral_canal"].fillna(entrenamiento["casos"].quantile(0.75))
     df["exceso"] = df["casos"] > df["umbral_canal"]
 
-    return df.sort_values(["municipio_id", "semana"]).reset_index(drop=True)
+    df = df.sort_values(["municipio_id", "semana"]).reset_index(drop=True)
+    # Etiqueta como en el pipeline: hay brote dentro de `horizonte_semanas` semanas (vacía al final de la serie).
+    df["etiqueta"] = (
+        df.groupby("municipio_id")["exceso"].shift(-settings.horizonte_semanas).astype(float)
+    )
+    return df
 
 
-def serie_municipio(municipio_id: str) -> pd.DataFrame:
+def serie_municipio(municipio_id: str) -> pd.DataFrame | None:
+    """Serie del municipio según MODO_DATOS. None sólo en modo sqlite sin datos cargados."""
+    if settings.modo_datos == "sqlite":
+        return almacen.serie_semanal(municipio_id)
     df = _serie_completa()
     return df[df["municipio_id"] == municipio_id].reset_index(drop=True)
 
 
-def rango_fechas_corte() -> tuple[pd.Timestamp, pd.Timestamp]:
+def rango_de_corte(primera_semana: pd.Timestamp, ultima_semana: pd.Timestamp) -> tuple[pd.Timestamp, pd.Timestamp]:
     """Fechas de corte válidas: hay historial suficiente y existe la semana objetivo."""
-    df = _serie_completa()
-    inicio = df["semana"].min() + pd.Timedelta(weeks=settings.ventana_historial)
-    fin = df["semana"].max() - pd.Timedelta(weeks=settings.horizonte_semanas)
+    inicio = primera_semana + pd.Timedelta(weeks=settings.ventana_historial)
+    fin = ultima_semana - pd.Timedelta(weeks=settings.horizonte_semanas)
     return inicio, fin
+
+
+def rango_fechas_corte() -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    """Fechas de corte válidas según MODO_DATOS. None si en sqlite no hay ningún municipio con datos.
+
+    En sqlite se usa la parte común de los municipios cargados, para que una fecha válida lo sea para todos.
+    """
+    if settings.modo_datos == "sqlite":
+        rangos = [r for r in (almacen.rango_datos(m) for m in MUNICIPIOS) if r is not None]
+        if not rangos:
+            return None
+        return rango_de_corte(max(r[0] for r in rangos), min(r[1] for r in rangos))
+    df = _serie_completa()
+    return rango_de_corte(df["semana"].min(), df["semana"].max())

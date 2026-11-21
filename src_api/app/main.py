@@ -2,20 +2,27 @@
 
 Ejecutar desde src_api/:  uvicorn app.main:app --reload
 Documentación interactiva: http://localhost:8000/docs
+
+MODO_DATOS=demo (por defecto): series simuladas.
+MODO_DATOS=sqlite: series semanales cargadas desde caracteristicas.csv en /api/v1/datos/{municipio_id}/csv.
 """
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 
+from . import almacen
 from .config import settings
-from .datos import MUNICIPIOS, rango_fechas_corte, serie_municipio
+from .datos import MUNICIPIOS, rango_de_corte, rango_fechas_corte, serie_municipio
 from .modelo import cargar_predictor
 from .schemas import (
+    EstadoDatosOut,
+    EstadoMunicipioOut,
     ModeloInfoOut,
     MunicipioOut,
     PrediccionIn,
     PrediccionOut,
     PuntoSerieOut,
     RangoFechasOut,
+    ResultadoCargaOut,
 )
 
 ADVERTENCIA_SIMULADO = (
@@ -31,9 +38,21 @@ app = FastAPI(
 predictor = cargar_predictor()
 
 
+def _sin_datos(nombre: str) -> HTTPException:
+    return HTTPException(
+        status_code=404,
+        detail=f"No hay datos cargados para {nombre}. Cárguelos en la pestaña Configuración.",
+    )
+
+
 @app.get("/api/v1/health")
 def health():
-    return {"estado": "ok", "backend": predictor.backend, "version": settings.model_version}
+    return {
+        "estado": "ok",
+        "backend": predictor.backend,
+        "version": settings.model_version,
+        "modo_datos": settings.modo_datos,
+    }
 
 
 @app.get("/api/v1/municipios", response_model=list[MunicipioOut])
@@ -43,7 +62,10 @@ def listar_municipios():
 
 @app.get("/api/v1/rango-fechas", response_model=RangoFechasOut)
 def rango_fechas():
-    inicio, fin = rango_fechas_corte()
+    rango = rango_fechas_corte()
+    if rango is None:
+        raise HTTPException(status_code=404, detail="No hay datos cargados en SQLite.")
+    inicio, fin = rango
     return RangoFechasOut(
         fecha_corte_min=inicio.date(),
         fecha_corte_max=fin.date(),
@@ -56,14 +78,21 @@ def serie(municipio_id: str):
     if municipio_id not in MUNICIPIOS:
         raise HTTPException(status_code=404, detail=f"Municipio desconocido: {municipio_id}")
     df = serie_municipio(municipio_id)
+    if df is None:
+        raise _sin_datos(MUNICIPIOS[municipio_id])
+    # Gráficas: se omiten los años anteriores a ANIO_MINIMO_GRAFICOS (la predicción usa la serie completa).
+    df = df[df["anio"] >= settings.anio_minimo_graficos]
     return [
         PuntoSerieOut(
             semana=r.semana.date(),
+            anio=int(r.anio),
+            mes=int(r.mes),
             casos=int(r.casos),
             lluvia_mm=float(r.lluvia_mm),
             temp_media_c=float(r.temp_media_c),
             umbral_canal=float(r.umbral_canal),
             exceso=bool(r.exceso),
+            etiqueta=None if pd.isna(r.etiqueta) else int(r.etiqueta),
         )
         for r in df.itertuples()
     ]
@@ -73,9 +102,11 @@ def serie(municipio_id: str):
 def prediccion(body: PrediccionIn):
     if body.municipio_id not in MUNICIPIOS:
         raise HTTPException(status_code=404, detail=f"Municipio desconocido: {body.municipio_id}")
-
     df = serie_municipio(body.municipio_id)
-    inicio, fin = rango_fechas_corte()
+    if df is None:
+        raise _sin_datos(MUNICIPIOS[body.municipio_id])
+
+    inicio, fin = rango_de_corte(df["semana"].min(), df["semana"].max())
 
     # Se usa la semana epidemiológica (inicia en domingo) que contiene la fecha indicada.
     previas = df.loc[df["semana"] <= pd.Timestamp(body.fecha_corte), "semana"]
@@ -90,7 +121,10 @@ def prediccion(body: PrediccionIn):
 
     historial = df[df["semana"] <= fecha]  # el modelo sólo ve el pasado
     objetivo_fecha = fecha + pd.Timedelta(weeks=settings.horizonte_semanas)
-    fila_objetivo = df[df["semana"] == objetivo_fecha].iloc[0]
+    filas_objetivo = df[df["semana"] == objetivo_fecha]
+    if filas_objetivo.empty:
+        raise HTTPException(status_code=422, detail=f"Falta la semana objetivo {objetivo_fecha.date()} en los datos.")
+    fila_objetivo = filas_objetivo.iloc[0]
 
     pred = predictor.predecir(historial, body.municipio_id, fecha)
 
@@ -125,3 +159,33 @@ def modelo_info():
         metricas="PENDIENTE: recall, especificidad, precisión, F1 y AUC-ROC por municipio aún no calculados.",
         advertencia=ADVERTENCIA_SIMULADO if predictor.backend == "simulado" else "",
     )
+
+
+@app.get("/api/v1/datos/estado", response_model=EstadoDatosOut)
+def estado_datos():
+    """Modo activo y, por municipio, lo que hay guardado en SQLite."""
+    return EstadoDatosOut(
+        modo=settings.modo_datos,
+        municipios=[
+            EstadoMunicipioOut(id=k, nombre=v, **almacen.estado_municipio(k))
+            for k, v in MUNICIPIOS.items()
+        ],
+    )
+
+
+@app.post("/api/v1/datos/{municipio_id}/csv", response_model=ResultadoCargaOut)
+async def cargar_csv(municipio_id: str, archivo: UploadFile = File(...)):
+    """Carga caracteristicas.csv (semanal) en SQLite.
+
+    Las semanas que ya existen se actualizan; las nuevas se agregan; las demás no se tocan.
+    Se guarda aunque el modo activo sea demo; los datos se usan sólo con MODO_DATOS=sqlite.
+    """
+    if municipio_id not in MUNICIPIOS:
+        raise HTTPException(status_code=404, detail=f"Municipio desconocido: {municipio_id}")
+    contenido = await archivo.read()
+    try:
+        df = almacen.leer_csv(contenido)
+    except almacen.CsvInvalido as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    resultado = almacen.guardar_csv(municipio_id, archivo.filename or "sin_nombre.csv", df)
+    return ResultadoCargaOut(id=municipio_id, nombre=MUNICIPIOS[municipio_id], **resultado)

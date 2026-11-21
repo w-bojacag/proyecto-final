@@ -36,3 +36,4 @@ Variables de entorno: `API_URL` (por defecto `http://localhost:8000/api/v1`) y `
 2. **Predicción y alerta**: fecha de corte limitada a fechas con datos; muestra probabilidad, alerta y variables influyentes.
 3. **Clima**: lluvia y temperatura semanales.
 4. **Detalle del modelo**: nombre, versión, horizonte, variables y estado de métricas (pendientes).
+5. **Configuración**: muestra el modo de datos activo (demo o SQLite), permite elegir un municipio y cargar su `caracteristicas.csv` semanal en SQLite. Las semanas existentes se actualizan y las nuevas se agregan. Formato en [../src_api/README.md](../src_api/README.md).

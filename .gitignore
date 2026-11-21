@@ -33,3 +33,6 @@ reports/resumen_modelado.md
 memoria_tesis.md
 estado_y_opciones_cartagena.md
 contexto_retomar.md
+
+# Base SQLite local de la API (datos cargados desde CSV)
+src_api/data/

@@ -15,12 +15,17 @@ class RangoFechasOut(BaseModel):
 
 
 class PuntoSerieOut(BaseModel):
-    semana: date
+    semana: date = Field(..., description="Domingo que inicia la semana epidemiológica.")
+    anio: int
+    mes: int = Field(..., description="Mes del domingo de inicio de la semana.")
     casos: int
     lluvia_mm: float
     temp_media_c: float
     umbral_canal: float
     exceso: bool
+    etiqueta: int | None = Field(
+        None, description="Brote dentro de horizonte_semanas (0 o 1). Vacío si el dato no se cargó o no existe."
+    )
 
 
 class PrediccionIn(BaseModel):
@@ -46,6 +51,29 @@ class PrediccionOut(BaseModel):
     backend: str
     version_modelo: str
     advertencia: str
+
+
+class EstadoMunicipioOut(BaseModel):
+    id: str
+    nombre: str
+    cargado: bool
+    semanas: int = Field(..., description="Semanas guardadas en SQLite para el municipio.")
+    primer_periodo: str | None = Field(None, examples=["2010-S01"])
+    ultimo_periodo: str | None = Field(None, examples=["2025-S49"])
+    archivo: str | None
+    cargado_en: str | None
+    ultimas_nuevas: int = Field(0, description="Semanas agregadas en la última carga.")
+    ultimas_actualizadas: int = Field(0, description="Semanas que ya existían y se actualizaron en la última carga.")
+
+
+class ResultadoCargaOut(EstadoMunicipioOut):
+    nuevas: int = Field(..., description="Semanas nuevas en esta carga.")
+    actualizadas: int = Field(..., description="Semanas existentes que se actualizaron en esta carga.")
+
+
+class EstadoDatosOut(BaseModel):
+    modo: str
+    municipios: list[EstadoMunicipioOut]
 
 
 class ModeloInfoOut(BaseModel):

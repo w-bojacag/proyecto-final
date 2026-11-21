@@ -25,8 +25,12 @@ target:
   anos_ventana: 5            # Umaña et al. (2026): ventanas cortas (5 años) rinden mejor que 7 o 9
   anos_minimos: 3            # años previos mínimos para calcular el umbral (antes no hay etiqueta)
   percentil: 0.75            # solo para metodo: percentil
-  bortman_desplazamiento: 0.001  # manejo de ceros en la media geométrica (Umaña et al., 2026)
-  semanas_consecutivas: 1    # brote si se supera el umbral k semanas seguidas (Minsalud/INS usa 3)
+  # Ceros en la media geométrica: +1 como Bortman (1999) y el INS. Con 0,001 (Umaña et al.,
+  # 2026) un solo cero en la ventana disparaba el umbral y el 26 % de las semanas quedaba sin
+  # brote posible.
+  bortman_desplazamiento: 1
+  semanas_consecutivas: 1    # brote si se supera el umbral k semanas seguidas (Minsalud/INS usa 3;
+                             # con 3 la validación 2020-2022 queda sin brotes en Santa Rosa)
   horizonte: 4
 
 # Partición cronológica por años epidemiológicos (inclusive):

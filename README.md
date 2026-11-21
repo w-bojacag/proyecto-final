@@ -6,9 +6,9 @@ municipios de Bolívar (Colombia). Usa los casos notificados a SIVIGILA y el cli
 urbana.
 
 - **Qué aporta frente al canal:** en 2023–2025 avisa casi tantos brotes como la alerta del propio
-  canal (29 de 42 frente a 33 de 42), con muchas menos falsas alarmas (9 episodios frente a 43). Su
-  probabilidad está mejor calibrada que una probabilidad calculada solo con el canal en 4 de 5
-  municipios.
+  canal (13 de 23 frente a 15 de 23), y casi todas sus alertas terminan en brote: 1 de sus 14
+  episodios de alerta fue falsa alarma, frente a 36 de 55 en el canal. Su probabilidad ordena y
+  calibra el riesgo mejor que una probabilidad calculada solo con el canal en los 5 municipios.
 - **Municipios:** Cartagena, Magangué, El Carmen de Bolívar, Turbaco y Santa Rosa del Sur, con un
   modelo independiente por municipio.
 - **Brote:** semana en que los casos superan el canal endémico de Bortman (límite superior del IC 95 %
@@ -25,13 +25,18 @@ años anteriores (walk-forward).
 
 | Municipio | AUC prueba [IC 95 %] | Brotes avisados | Anticipación mediana (semanas) |
 |---|---|---|---|
-| Cartagena | 0,984 [0,95–1,00] | 4 de 7 | 7 |
-| Magangué | 0,959 [0,92–0,99] | 12 de 13 | 6 |
-| El Carmen de Bolívar | 0,962 [0,90–1,00] | 2 de 2 | 6 |
-| Santa Rosa del Sur | 0,948 [0,88–1,00] | 6 de 8 | 24 |
-| Turbaco | 0,842 [0,75–0,93] | 5 de 12 | 4 |
+| Cartagena | 0,963 [0,92–0,99] | 1 de 5 | 21 |
+| Magangué | 0,924 [0,83–0,98] | 1 de 2 | 10 |
+| El Carmen de Bolívar | 0,919 [0,70–0,99] | 2 de 3 | 8,5 |
+| Santa Rosa del Sur | 0,942 [0,86–1,00] | 2 de 2 | 37 |
+| Turbaco | 0,832 [0,71–0,93] | 7 de 11 | 14 |
 
 Un brote cuenta como avisado si hubo una alerta entre 2 semanas antes de su inicio y su inicio.
+Con el canal de Bortman y el INS, 2023–2025 fue un periodo epidémico: entre el 24 % y el 60 % de
+las semanas de prueba tienen brote en 4 de los 5 municipios (5 % en El Carmen de Bolívar), así que
+hay pocos brotes, pero largos. La regresión logística empata con la regla simple de casos sobre
+umbral (diferencias de AUC entre −0,004 y +0,003) y supera de forma significativa a XGBoost y al
+LSTM en la mayoría de los municipios.
 Las tablas completas, con los demás modelos, las líneas base y la calibración, están en
 [reports/resumen_municipios.csv](reports/resumen_municipios.csv). Cada municipio tiene además su
 curva de calibración (`reports/municipios/<m>/calibracion.png`).
@@ -42,8 +47,8 @@ La etiqueta `target_brote_t4` de la semana *t* vale 1 si en la semana *t+4* hay 
 
 1. **Canal endémico de Bortman.** Para la semana *s* del año *Y*, se toman los casos de esa misma
    semana en los años *Y-5* a *Y-1*. El umbral es el límite superior del IC 95 % de su media
-   geométrica, con un desplazamiento de 0,001 para los ceros (Umaña et al., 2026). La semana 53 se
-   compara con la historia de la semana 52.
+   geométrica, sumando 1 a los casos para manejar los ceros, como Bortman (1999) y el INS. La
+   semana 53 se compara con la historia de la semana 52.
 2. **Brote en la semana *s*:** los casos (confirmados y probables, por semana epidemiológica de
    inicio de síntomas) superan ese umbral. Basta 1 semana; `target.semanas_consecutivas` permite
    exigir más.
@@ -52,6 +57,14 @@ La etiqueta `target_brote_t4` de la semana *t* vale 1 si en la semana *t+4* hay 
 Las semanas sin al menos 3 años previos no tienen umbral y no se usan, por eso la serie empieza en
 2010. La comparación entre definiciones (percentil 75 frente a Bortman, 1 o 3 semanas) que
 justifica esta elección está documentada en el historial del proyecto.
+
+**Por qué +1 y no 0,001.** Umaña et al. (2026) proponen sumar 0,001. Con 5 años de ventana, un solo
+cero aporta log(0,001) = −6,9 y la desviación se infla tanto que el umbral se dispara: llegaba a
+casi un millón de casos en Cartagena. En el 26 % de las semanas el umbral superaba el máximo de
+casos jamás observado en el municipio, así que en ellas no podía haber brote. Con +1 esas semanas
+desaparecen y el canal coincide con el estándar de Bortman y del INS. Exigir 3 semanas seguidas
+(definición de Minsalud) se descartó porque deja la validación 2020–2022 sin brotes en Santa Rosa
+del Sur.
 
 ## Por qué no hay fuga de datos
 
@@ -91,14 +104,10 @@ llamarse `.venv` y estar en la raíz del proyecto.
 
 ### Acceso a los datos (DagsHub)
 
-Los datos y modelos no están en Git; están en el remoto de DVC en DagsHub. El repositorio es
-público, así que para **descargarlos** no se necesita cuenta:
-
-```bash
-.venv\Scripts\dvc.exe pull
-```
-
-Para **subir** resultados (`dvc push`) hace falta ser colaborador:
+Los datos y modelos no están en Git; están en el remoto de DVC en DagsHub. **DagsHub exige iniciar
+sesión incluso para descargar**: sin credenciales, `dvc pull` falla con "Checkout failed" o
+"missing cache files", aunque el repositorio sea público. Para descargar (`dvc pull`) y para subir
+(`dvc push`):
 
 1. Crea una cuenta en [DagsHub](https://dagshub.com) y pide que te agreguen como colaborador del
    repositorio.
@@ -110,6 +119,12 @@ Para **subir** resultados (`dvc push`) hace falta ser colaborador:
    .venv\Scripts\dvc.exe remote modify origin --local auth basic
    .venv\Scripts\dvc.exe remote modify origin --local user <tu-usuario-dagshub>
    .venv\Scripts\dvc.exe remote modify origin --local password <tu-token>
+   ```
+
+4. Descarga los datos y modelos:
+
+   ```bash
+   .venv\Scripts\dvc.exe pull
    ```
 
 ## Uso

@@ -1,18 +1,18 @@
 {
     "ratio_casos_umbral_objetivo": {
-        "coeficiente": 3.463257567915898,
-        "razon_odds_por_desviacion": 31.92079147688296,
-        "desviacion_log1p": 0.3918945114141285
+        "coeficiente": 2.7125274936174244,
+        "razon_odds_por_desviacion": 15.06730995847277,
+        "desviacion_log1p": 0.491190970755008
     },
     "ratio_roll4_umbral_objetivo": {
-        "coeficiente": -0.796293313519919,
-        "razon_odds_por_desviacion": 0.4509975763142649,
-        "desviacion_log1p": 0.40609102453417983
+        "coeficiente": -0.5056752235716917,
+        "razon_odds_por_desviacion": 0.6030982117831095,
+        "desviacion_log1p": 0.5149996222892531
     },
     "exceso_actual": {
-        "coeficiente": 0.024098179588715844,
-        "razon_odds_por_desviacion": 1.024390887229605,
-        "desviacion_log1p": 0.3955967023129064
+        "coeficiente": 0.9021654702313464,
+        "razon_odds_por_desviacion": 2.464935079500866,
+        "desviacion_log1p": 0.48185015838767425
     },
-    "intercepto": -3.2055863768982205
+    "intercepto": -2.006237900631606
 }

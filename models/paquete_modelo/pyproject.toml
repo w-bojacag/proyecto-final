@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dengue-modelo-logistica"
+version = "0.1.0"
+description = "Regresión logística de alerta temprana de excesos de dengue (Bolívar), con sus artefactos entrenados"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas==2.2.3",
+    "numpy==2.1.1",
+    "scikit-learn==1.9.1",
+    "joblib==1.6.0",
+]
+
+[tool.setuptools]
+packages = ["modelo_dengue"]
+
+[tool.setuptools.package-data]
+modelo_dengue = ["artefactos/*/logistica.joblib"]

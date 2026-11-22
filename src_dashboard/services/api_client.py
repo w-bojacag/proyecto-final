@@ -55,6 +55,14 @@ def get_estado_datos() -> dict:
     return _request("GET", "/datos/estado")
 
 
+def get_configuracion() -> dict:
+    return _request("GET", "/configuracion")
+
+
+def guardar_configuracion(cambios: dict) -> dict:
+    return _request("PUT", "/configuracion", json=cambios)
+
+
 def post_csv(municipio_id: str, nombre_archivo: str, contenido: bytes) -> dict:
     return _request(
         "POST",

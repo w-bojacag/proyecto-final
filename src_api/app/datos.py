@@ -22,14 +22,16 @@ def serie_municipio(municipio_id: str) -> pd.DataFrame | None:
     return almacen.serie_semanal(municipio_id)
 
 
-def rango_de_corte(primera_semana: pd.Timestamp, ultima_semana: pd.Timestamp) -> tuple[pd.Timestamp, pd.Timestamp]:
-    """Fechas de corte válidas: hay historial suficiente y existe la semana objetivo."""
-    inicio = primera_semana + pd.Timedelta(weeks=settings.ventana_historial)
+def rango_de_corte(
+    primera_semana: pd.Timestamp, ultima_semana: pd.Timestamp, ventana_historial: int
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Fechas de corte válidas: hay `ventana_historial` semanas de historial y existe la semana objetivo."""
+    inicio = primera_semana + pd.Timedelta(weeks=ventana_historial)
     fin = ultima_semana - pd.Timedelta(weeks=settings.horizonte_semanas)
     return inicio, fin
 
 
-def rango_fechas_corte() -> tuple[pd.Timestamp, pd.Timestamp] | None:
+def rango_fechas_corte(ventana_historial: int) -> tuple[pd.Timestamp, pd.Timestamp] | None:
     """Fechas de corte válidas. None si no hay ningún municipio con datos.
 
     Se usa la parte común de los municipios cargados, para que una fecha válida lo sea para todos.
@@ -37,4 +39,4 @@ def rango_fechas_corte() -> tuple[pd.Timestamp, pd.Timestamp] | None:
     rangos = [r for r in (almacen.rango_datos(m) for m in MUNICIPIOS) if r is not None]
     if not rangos:
         return None
-    return rango_de_corte(max(r[0] for r in rangos), min(r[1] for r in rangos))
+    return rango_de_corte(max(r[0] for r in rangos), min(r[1] for r in rangos), ventana_historial)

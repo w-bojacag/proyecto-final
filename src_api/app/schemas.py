@@ -73,10 +73,40 @@ class EstadoDatosOut(BaseModel):
     municipios: list[EstadoMunicipioOut]
 
 
+class MetricasMunicipioOut(BaseModel):
+    municipio_id: str
+    auc_roc: float = Field(..., description="AUC-ROC en el conjunto de prueba.")
+    auc_pr: float = Field(..., description="Área bajo la curva precisión-recall en el conjunto de prueba.")
+    recall: float = Field(..., description="Sensibilidad: proporción de brotes detectados.")
+    especificidad: float
+    precision: float
+    f1: float | None
+    auc_roc_ic95: list[float] = Field(..., description="Intervalo del 95 % de la AUC-ROC (inferior, superior).")
+    vp: int
+    fp: int
+    fn: int
+    vn: int
+    brotes_prueba: int = Field(..., description="Semanas con brote en el conjunto de prueba.")
+    brotes_avisados: int = Field(..., description="Brotes con alerta previa dentro de la ventana de anticipación.")
+
+
+class ConfiguracionIn(BaseModel):
+    umbral_decision: float | None = Field(None, ge=0, le=1, description="Probabilidad a partir de la cual hay alerta.")
+    anio_minimo_graficos: int | None = Field(None, ge=2007, le=2030, description="Primer año de las gráficas.")
+    ventana_historial: int | None = Field(None, ge=1, le=52, description="Semanas de historial mínimo para una fecha de corte.")
+
+
+class ConfiguracionOut(BaseModel):
+    umbral_decision: float
+    anio_minimo_graficos: int
+    ventana_historial: int
+
+
 class ModeloInfoOut(BaseModel):
     nombre: str
     version: str
     horizonte_semanas: int
     umbral_decision: float
     variables: list[str]
-    metricas: str
+    periodo_prueba: str
+    metricas: list[MetricasMunicipioOut]

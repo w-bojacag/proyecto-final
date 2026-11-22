@@ -63,6 +63,10 @@ CREATE TABLE IF NOT EXISTS cargas (
     ultimas_actualizadas INTEGER NOT NULL,
     cargado_en TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS configuracion (
+    clave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+);
 """
 
 
@@ -257,3 +261,23 @@ def serie_semanal(municipio_id: str) -> pd.DataFrame | None:
     df["etiqueta"] = df["etiqueta"].astype(float)
     return df[["municipio_id", "semana", "anio", "semana_epi", "mes", "casos", "lluvia_mm",
                "temp_media_c", "umbral_canal", "exceso", "etiqueta"]]
+
+
+def leer_configuracion(valores_por_defecto: dict) -> dict:
+    """Valores guardados en SQLite; los que faltan toman el valor por defecto (con su tipo)."""
+    cfg = dict(valores_por_defecto)
+    with closing(_conexion()) as con:
+        for fila in con.execute("SELECT clave, valor FROM configuracion"):
+            if fila["clave"] in cfg:
+                cfg[fila["clave"]] = type(valores_por_defecto[fila["clave"]])(fila["valor"])
+    return cfg
+
+
+def guardar_configuracion(cambios: dict) -> None:
+    """Inserta o actualiza los parámetros indicados."""
+    with closing(_conexion()) as con, con:
+        con.executemany(
+            "INSERT INTO configuracion (clave, valor) VALUES (?, ?) "
+            "ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor",
+            [(clave, str(valor)) for clave, valor in cambios.items()],
+        )

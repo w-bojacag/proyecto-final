@@ -9,13 +9,17 @@ El modelo es la regresión logística del paquete dengue-modelo-logistica (.whl)
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
-from . import almacen
+from . import ajustes, almacen
 from .config import settings
 from .datos import MUNICIPIOS, rango_de_corte, rango_fechas_corte, serie_municipio
+from .metricas import PERIODO_PRUEBA, cargar_metricas
 from .modelo import cargar_predictor
 from .schemas import (
+    ConfiguracionIn,
+    ConfiguracionOut,
     EstadoDatosOut,
     EstadoMunicipioOut,
+    MetricasMunicipioOut,
     ModeloInfoOut,
     MunicipioOut,
     PrediccionIn,
@@ -32,6 +36,7 @@ app = FastAPI(
 )
 
 predictor = cargar_predictor()
+METRICAS = cargar_metricas()
 
 
 def _sin_datos(nombre: str) -> HTTPException:
@@ -55,9 +60,21 @@ def listar_municipios():
     return [MunicipioOut(id=k, nombre=v) for k, v in MUNICIPIOS.items()]
 
 
+@app.get("/api/v1/configuracion", response_model=ConfiguracionOut)
+def leer_configuracion():
+    return ConfiguracionOut(**ajustes.actual())
+
+
+@app.put("/api/v1/configuracion", response_model=ConfiguracionOut)
+def guardar_configuracion(body: ConfiguracionIn):
+    """Guarda los parámetros indicados en SQLite. Los campos omitidos no cambian."""
+    cambios = body.model_dump(exclude_none=True)
+    return ConfiguracionOut(**ajustes.guardar(cambios))
+
+
 @app.get("/api/v1/rango-fechas", response_model=RangoFechasOut)
 def rango_fechas():
-    rango = rango_fechas_corte()
+    rango = rango_fechas_corte(ajustes.actual()["ventana_historial"])
     if rango is None:
         raise HTTPException(status_code=404, detail="No hay datos cargados en SQLite.")
     inicio, fin = rango
@@ -75,8 +92,8 @@ def serie(municipio_id: str):
     df = serie_municipio(municipio_id)
     if df is None:
         raise _sin_datos(MUNICIPIOS[municipio_id])
-    # Gráficas: se omiten los años anteriores a ANIO_MINIMO_GRAFICOS (la predicción usa la serie completa).
-    df = df[df["anio"] >= settings.anio_minimo_graficos]
+    # Gráficas: se omiten los años anteriores al año mínimo configurado (la predicción usa la serie completa).
+    df = df[df["anio"] >= ajustes.actual()["anio_minimo_graficos"]]
     return [
         PuntoSerieOut(
             semana=r.semana.date(),
@@ -101,7 +118,8 @@ def prediccion(body: PrediccionIn):
     if df is None:
         raise _sin_datos(MUNICIPIOS[body.municipio_id])
 
-    inicio, fin = rango_de_corte(df["semana"].min(), df["semana"].max())
+    cfg = ajustes.actual()
+    inicio, fin = rango_de_corte(df["semana"].min(), df["semana"].max(), cfg["ventana_historial"])
 
     # Se usa la semana epidemiológica (inicia en domingo) que contiene la fecha indicada.
     previas = df.loc[df["semana"] <= pd.Timestamp(body.fecha_corte), "semana"]
@@ -130,8 +148,8 @@ def prediccion(body: PrediccionIn):
         semana_objetivo=objetivo_fecha.date(),
         horizonte_semanas=settings.horizonte_semanas,
         probabilidad_exceso=pred.probabilidad_exceso,
-        alerta=pred.probabilidad_exceso >= settings.umbral_decision,
-        umbral_decision=settings.umbral_decision,
+        alerta=pred.probabilidad_exceso >= cfg["umbral_decision"],
+        umbral_decision=cfg["umbral_decision"],
         umbral_canal_objetivo=float(fila_objetivo["umbral_canal"]),
         exceso_observado=bool(fila_objetivo["exceso"]),
         variables_influyentes=pred.variables_influyentes,
@@ -146,9 +164,10 @@ def modelo_info():
         nombre=predictor.nombre,
         version=settings.model_version,
         horizonte_semanas=settings.horizonte_semanas,
-        umbral_decision=settings.umbral_decision,
+        umbral_decision=ajustes.actual()["umbral_decision"],
         variables=predictor.variables,
-        metricas="PENDIENTE: recall, especificidad, precisión, F1 y AUC-ROC por municipio aún no calculados.",
+        periodo_prueba=PERIODO_PRUEBA,
+        metricas=[MetricasMunicipioOut(**m) for m in METRICAS],
     )
 
 

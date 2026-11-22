@@ -340,11 +340,11 @@ if rango is not None:
     fecha_min = pd.Timestamp(rango["fecha_corte_min"]).date()
     fecha_max = pd.Timestamp(rango["fecha_corte_max"]).date()
 
-tab_mapa, tab_casos, tab_modelo, tab_config, tab_acerca = st.tabs([
+tab_mapa, tab_casos, tab_config, tab_modelo, tab_acerca = st.tabs([
     "🗺️ 1. Mapa de alertas",
     "📈 2. Casos y canal endémico",
-    "🧪 3. Detalle del modelo",
-    "⚙️ 4. Configuración",
+    "⚙️ 3. Configuración",
+    "🧪 4. Detalle del modelo",
     "ℹ️ 5. Acerca de",
 ])
 
@@ -524,16 +524,80 @@ with tab_casos:
 with tab_modelo:
     st.subheader("Detalle técnico del modelo")
     st.table(pd.DataFrame({
-        "Concepto": ["Modelo", "Versión", "Horizonte (semanas)", "Umbral de decisión",
-                     "Variables", "Métricas de evaluación"],
+        "Concepto": ["Modelo", "Versión", "Horizonte (semanas)", "Umbral de decisión", "Variables"],
         "Valor": [modelo_info["nombre"], modelo_info["version"],
                   str(modelo_info["horizonte_semanas"]), f"{modelo_info['umbral_decision']:.0%}",
-                  ", ".join(modelo_info["variables"]), modelo_info["metricas"]],
+                  ", ".join(modelo_info["variables"])],
     }))
-    st.info("")
+    st.markdown(
+        f"**Métricas de evaluación por municipio** (conjunto de prueba {modelo_info['periodo_prueba']})"
+    )
+    if modelo_info["metricas"]:
+        filas = [{
+            "Municipio": nombres.get(m["municipio_id"], m["municipio_id"]),
+            "AUC-ROC": round(m["auc_roc"], 3),
+            "Recall": round(m["recall"], 3),
+            "Especificidad": round(m["especificidad"], 3),
+            "Precisión": round(m["precision"], 3),
+            "F1": round(m["f1"], 3) if m["f1"] is not None else None,
+            "AUC-PR": round(m["auc_pr"], 3),
+            "Brotes avisados": f"{m['brotes_avisados']} de {m['brotes_prueba']}",
+        } for m in modelo_info["metricas"]]
+        st.dataframe(pd.DataFrame(filas), hide_index=True, use_container_width=True)
+        st.caption(
+            "Recall: proporción de semanas con brote que el modelo alerta. Especificidad: proporción de semanas "
+            "sin brote que no generan alerta. Las métricas usan el umbral calibrado en el entrenamiento (Youden "
+            "sobre el año anterior), no el umbral de decisión de la API."
+        )
+    else:
+        st.info("No hay métricas cargadas en la API.")
 
 # ---------- 4. Configuración ----------
 with tab_config:
+    st.subheader("Parámetros del análisis")
+    st.caption(
+        "Se guardan en la base de datos y aplican a todos los usuarios del dashboard. "
+        "Al guardar, las pestañas se actualizan."
+    )
+    if "aviso_parametros" in st.session_state:
+        st.success(st.session_state.pop("aviso_parametros"))
+    try:
+        cfg_actual = api.get_configuracion()
+    except ApiError as exc:
+        st.error(str(exc))
+        cfg_actual = None
+    if cfg_actual is not None:
+        with st.form("form_parametros"):
+            nuevo_umbral = st.slider(
+                "Umbral de decisión (probabilidad de alerta)", min_value=0.0, max_value=1.0,
+                value=float(cfg_actual["umbral_decision"]), step=0.01,
+                help="Hay alerta cuando la probabilidad del modelo es igual o mayor a este valor.",
+            )
+            nuevo_anio = st.number_input(
+                "Año mínimo de las gráficas", min_value=2007, max_value=2030,
+                value=int(cfg_actual["anio_minimo_graficos"]), step=1,
+                help="Las gráficas de casos, canal y clima empiezan en este año. La predicción usa toda la serie.",
+            )
+            nueva_ventana = st.number_input(
+                "Ventana de historial (semanas)", min_value=1, max_value=52,
+                value=int(cfg_actual["ventana_historial"]), step=1,
+                help="Semanas de historial mínimo que se necesitan antes de una fecha de corte.",
+            )
+            guardar_param = st.form_submit_button("Guardar parámetros", type="primary")
+        if guardar_param:
+            try:
+                api.guardar_configuracion({
+                    "umbral_decision": float(nuevo_umbral),
+                    "anio_minimo_graficos": int(nuevo_anio),
+                    "ventana_historial": int(nueva_ventana),
+                })
+                st.cache_data.clear()
+                st.session_state["aviso_parametros"] = "Parámetros guardados."
+                st.rerun()
+            except ApiError as exc:
+                st.error(str(exc))
+
+    st.divider()
     st.subheader("Configuración de datos")
     st.markdown("**Cargar datos semanales de un municipio**")
     st.caption(

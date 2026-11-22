@@ -13,6 +13,7 @@ COPY model_pkg/*.whl /tmp/paquete/
 RUN pip install --no-cache-dir /tmp/paquete/*.whl && rm -rf /tmp/paquete
 
 COPY app ./app
+COPY metricas ./metricas
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

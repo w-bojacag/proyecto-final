@@ -14,6 +14,8 @@ Para que la API responda predicciones, hay que cargar antes los datos de cada mu
 | GET | `/api/v1/municipios/{id}/serie` | Casos, lluvia, temperatura, umbral del canal, exceso y etiqueta |
 | POST | `/api/v1/prediccion` | Probabilidad de exceso a 4 semanas para una fecha de corte |
 | GET | `/api/v1/modelo` | Información del modelo y estado de métricas |
+| GET | `/api/v1/configuracion` | Parámetros ajustables guardados en SQLite (umbral de decisión, año mínimo de gráficas, ventana de historial) |
+| PUT | `/api/v1/configuracion` | Cambia uno o más de esos parámetros. Los campos omitidos no cambian |
 | GET | `/api/v1/datos/estado` | Lo cargado en SQLite por municipio |
 | POST | `/api/v1/datos/{municipio_id}/csv` | Carga `caracteristicas.csv` semanal en SQLite |
 
@@ -28,7 +30,9 @@ POST /api/v1/prediccion
 
 ## Carga de datos
 
-Se carga el archivo `data/processed/municipios/<municipio>/caracteristicas.csv` tal cual lo genera el pipeline (una fila por año y semana epidemiológica). La API usa estas columnas y ignora el resto:
+Los datos se cargan desde el dashboard, sin comandos: abre la pestaña **3. Configuración**, sección **Configuración de datos**, elige el municipio, selecciona su archivo `data/processed/municipios/<municipio>/caracteristicas.csv` (el que genera el pipeline) y cárgalo. Repite para los cinco municipios. El dashboard envía el archivo a la API, que lo guarda en SQLite.
+
+Se carga el archivo tal cual lo genera el pipeline (una fila por año y semana epidemiológica). La API usa estas columnas y ignora el resto:
 
 | Columna del CSV | Se guarda como | Significado |
 |---|---|---|
@@ -45,18 +49,13 @@ Se carga el archivo `data/processed/municipios/<municipio>/caracteristicas.csv` 
 - **Carga por actualización:** la clave es `(municipio, ANO, SEMANA)`. Si la semana ya existe se **actualiza**; si no existe se **agrega**; las semanas que no vienen en el archivo se **conservan**. La respuesta indica cuántas fueron nuevas y cuántas actualizadas.
 - Si faltan columnas, hay valores vacíos o no numéricos, o hay semanas repetidas, la API responde `422` con el detalle.
 - Si un municipio no tiene datos cargados, sus endpoints de serie y predicción responden `404`.
-
-Ejemplo:
-
-```bash
-curl -F "archivo=@data/processed/municipios/cartagena/caracteristicas.csv" http://localhost:8000/api/v1/datos/cartagena/csv
-```
+- Los archivos no pasan por la consola. El endpoint `POST /api/v1/datos/{municipio_id}/csv` lo usa el dashboard por dentro.
 
 ## Empaquetar el modelo (.whl)
 
 El paquete del modelo está en `models/paquete_modelo/`. Contiene las variables, la carga y los artefactos entrenados de los cinco municipios (`modelo_dengue/artefactos/`). La API no lee `models/` directamente: instala el `.whl` que está en `src_api/model_pkg/`.
 
-Flujo: empaquetar en `models/paquete_modelo/` → copiar el `.whl` a `src_api/model_pkg/` → construir la imagen de la API.
+Flujo: empaquetar en `models/paquete_modelo/` → copiar el `.whl` a `src_api/model_pkg/` → subir al repositorio → construir la imagen de la API.
 
 Windows (PowerShell), desde `proyecto-final/`:
 
@@ -65,13 +64,6 @@ cd models\paquete_modelo
 python -m pip wheel . --no-deps -w dist
 cd ..\..
 Copy-Item "models\paquete_modelo\dist\dengue_modelo_logistica-0.1.0-py3-none-any.whl" "src_api\model_pkg\" -Force
-```
-
-Linux / macOS / Git Bash, desde `proyecto-final/`:
-
-```bash
-cd models/paquete_modelo && python -m pip wheel . --no-deps -w dist && cd ../..
-cp models/paquete_modelo/dist/dengue_modelo_logistica-0.1.0-py3-none-any.whl src_api/model_pkg/
 ```
 
 Para instalarlo en un entorno local: `pip install src_api/model_pkg/dengue_modelo_logistica-0.1.0-py3-none-any.whl`.
@@ -88,17 +80,6 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 pip install model_pkg\dengue_modelo_logistica-0.1.0-py3-none-any.whl
-uvicorn app.main:app --reload --port 8000
-```
-
-Linux / macOS / Git Bash:
-
-```bash
-cd src_api
-python -m venv .venv
-source .venv/bin/activate        # en Git Bash en Windows: source .venv/Scripts/activate
-pip install -r requirements.txt
-pip install model_pkg/dengue_modelo_logistica-0.1.0-py3-none-any.whl
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -124,6 +105,8 @@ docker compose logs -f api
 docker compose down
 ```
 
+Los parámetros de análisis (`UMBRAL_DECISION`, `ANIO_MINIMO_GRAFICOS`, `VENTANA_HISTORIAL`) no hace falta pasarlos en los comandos de despliegue. La API arranca con sus valores por defecto y después se ajustan desde la pestaña Configuración del dashboard, que se guardan en la base de datos del volumen.
+
 Solo la API, sin Compose:
 
 ```bash
@@ -134,7 +117,7 @@ docker run -d --name dengue-api -p 8000:8000 \
   dengue-alerta-api:0.1
 ```
 
-Solo el dashboard:
+Solo el dashboard, con la API corriendo en tu equipo (Windows o Mac):
 
 ```bash
 docker build -t dengue-alerta-dashboard:0.1 ./src_dashboard
@@ -143,136 +126,146 @@ docker run -d --name dengue-dashboard -p 8501:8501 \
   dengue-alerta-dashboard:0.1
 ```
 
+En Linux, `host.docker.internal` no existe por defecto. Para ese caso usa la red compartida descrita en el despliegue en EC2.
+
 Con Compose, el dashboard ya apunta a la API del mismo `docker-compose.yml`. Accesos: API en `http://localhost:8000/docs`, dashboard en `http://localhost:8501`.
 
-Tras levantar la API, cargar los datos de cada municipio:
-
-```bash
-curl -F "archivo=@data/processed/municipios/cartagena/caracteristicas.csv" http://localhost:8000/api/v1/datos/cartagena/csv
-```
+Tras levantar los servicios, cargar los datos de cada municipio desde el dashboard (`http://localhost:8501`, pestaña Configuración; ver [Carga de datos](#carga-de-datos)).
 
 Verificación: `curl http://localhost:8000/api/v1/health` debe responder con `"estado": "ok"` y el nombre del modelo.
 
 ## Despliegue en AWS EC2
 
-Flujo: construir las imágenes en tu equipo → subirlas a Amazon ECR → en la instancia EC2, descargarlas y ejecutarlas. Los dos servicios se conectan por una red de Docker propia, así el dashboard llama a la API por el nombre `dengue-api`.
+La instancia clona el repositorio, construye las imágenes localmente y ejecuta los contenedores. No se usa un registro de imágenes (ECR).
 
-Los comandos usan variables que debes reemplazar: `AWS_REGION` (por ejemplo `us-east-1`) y `AWS_ACCOUNT_ID` (tu número de cuenta de 12 dígitos). No se incluyen credenciales: usa `aws configure` o un perfil de IAM con permiso para ECR.
+Antes de empezar, en tu equipo:
 
-### 1. En tu equipo: construir y subir las imágenes
+- El `.whl` debe estar en el repositorio remoto, en `src_api/model_pkg/`. Si no está, la construcción de la imagen de la API falla. Verifica con `git status` y haz commit y push de esa carpeta.
+- Los CSV de los municipios **no están en git** (se versionan con DVC). Se suben desde tu navegador en el paso 4.
 
-Requisitos: AWS CLI, Docker, `.whl` copiado en `src_api/model_pkg/` (ver [Empaquetar el modelo](#empaquetar-el-modelo-whl)). Desde `proyecto-final/`, en Git Bash o Linux/macOS:
+### 1. Preparar la instancia
 
-```bash
-export AWS_REGION=us-east-1
-export AWS_ACCOUNT_ID=123456789012
-export REGISTRY=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-
-# Crear los repositorios (solo la primera vez)
-aws ecr create-repository --repository-name dengue-alerta-api --region $AWS_REGION
-aws ecr create-repository --repository-name dengue-alerta-dashboard --region $AWS_REGION
-
-# Iniciar sesión en ECR
-aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
-
-# Construir para la arquitectura de EC2 (x86_64) y subir
-docker build --platform linux/amd64 -t $REGISTRY/dengue-alerta-api:0.1 ./src_api
-docker push $REGISTRY/dengue-alerta-api:0.1
-
-docker build --platform linux/amd64 -t $REGISTRY/dengue-alerta-dashboard:0.1 ./src_dashboard
-docker push $REGISTRY/dengue-alerta-dashboard:0.1
-```
-
-Si la instancia usa procesadores ARM (Graviton, por ejemplo `t4g`), cambia `linux/amd64` por `linux/arm64`.
-
-### 2. Preparar la instancia EC2
-
-- Sistema operativo: Amazon Linux 2023 (incluye AWS CLI).
-- Rol de IAM con la política `AmazonEC2ContainerRegistryReadOnly`, para que la instancia pueda descargar las imágenes.
-- Grupo de seguridad: SSH (22) solo desde tu IP; dashboard (8501) desde donde lo vayan a usar; API (8000) solo si necesitas acceso externo, por ejemplo para cargar datos.
-
-Conectarse y preparar Docker:
+- Sistema operativo: Amazon Linux 2023.
+- Grupo de seguridad: SSH (22) solo desde tu IP; dashboard (8501) desde donde lo vayan a usar. La API (8000) no necesita ser pública: el dashboard la llama desde dentro de la red de Docker.
 
 ```bash
 ssh -i tu-clave.pem ec2-user@<IP_PUBLICA>
 
-sudo dnf install -y docker
+sudo dnf install -y docker git
 sudo systemctl enable --now docker
 sudo usermod -aG docker ec2-user      # cerrar la sesión SSH y volver a entrar
 ```
 
-### 3. En la instancia: descargar y ejecutar
+Si no quieres usar el grupo `docker`, antepón `sudo` a todos los comandos de `docker` de esta sección. Usa siempre la misma forma en todos los pasos.
+
+### 2. Clonar y construir las imágenes
 
 ```bash
-export AWS_REGION=us-east-1
-export AWS_ACCOUNT_ID=123456789012
-export REGISTRY=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+cd ~
+git clone <URL_DEL_REPOSITORIO> proyecto-final
+cd proyecto-final
+ls src_api/model_pkg                  # debe mostrar el .whl
 
-aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
+docker build -t dengue-alerta-api:0.1 ./src_api
+docker build -t dengue-alerta-dashboard:0.1 ./src_dashboard
+```
 
+### 3. Red y contenedores
+
+Los dos contenedores se conectan por la red `dengue`, así el dashboard llama a la API por el nombre `dengue-api`.
+
+```bash
 docker network create dengue
 docker volume create dengue-data      # aquí queda la base SQLite, aunque se reinicien los contenedores
-
-docker pull $REGISTRY/dengue-alerta-api:0.1
-docker pull $REGISTRY/dengue-alerta-dashboard:0.1
 
 docker run -d --name dengue-api --network dengue --restart unless-stopped -p 8000:8000 \
   -e SQLITE_PATH=/app/data/dengue.sqlite \
   -v dengue-data:/app/data \
-  $REGISTRY/dengue-alerta-api:0.1
+  dengue-alerta-api:0.1
 
 docker run -d --name dengue-dashboard --network dengue --restart unless-stopped -p 8501:8501 \
   -e API_URL=http://dengue-api:8000/api/v1 \
-  $REGISTRY/dengue-alerta-dashboard:0.1
+  dengue-alerta-dashboard:0.1
 ```
 
-Comprobar: `curl http://localhost:8000/api/v1/health` debe responder `"estado": "ok"`. El dashboard queda en `http://<IP_PUBLICA>:8501`.
+No mezcles estos comandos con `docker compose` en la misma instancia: Compose crea su propia red y sus nombres de contenedor.
 
-### 4. Cargar los datos en la instancia
+Los parámetros de análisis no van en estos comandos. Si necesitas un valor distinto al inicial, cámbialo desde la pestaña Configuración del dashboard. El volumen `dengue-data` debe conservarse entre actualizaciones, porque ahí se guardan esos valores.
 
-Copiar el CSV de cada municipio desde tu equipo, con un nombre distinto por municipio para que no se sobrescriban:
+### 4. Cargar los datos desde el dashboard
+
+Abre `http://<IP_PUBLICA>:8501` en tu navegador, ve a la pestaña **3. Configuración** y, en **Configuración de datos**, carga el `caracteristicas.csv` de cada municipio (cartagena, magangue, el_carmen_de_bolivar, santa_rosa_del_sur, turbaco). Los archivos están en `data/processed/municipios/<municipio>/` de tu equipo, no en la instancia, así que no hace falta copiarlos con `scp`.
+
+Al terminar, la sección de estado de datos del dashboard debe mostrar cada municipio como cargado.
+
+### 5. Verificar
 
 ```bash
-# En tu equipo (Git Bash), desde proyecto-final/
-for m in cartagena magangue el_carmen_de_bolivar santa_rosa_del_sur turbaco; do
-  scp -i tu-clave.pem data/processed/municipios/$m/caracteristicas.csv ec2-user@<IP_PUBLICA>:~/$m.csv
-done
+curl -s http://localhost:8000/api/v1/health
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8501
+docker exec dengue-dashboard python -c "import urllib.request; print(urllib.request.urlopen('http://dengue-api:8000/api/v1/health').read())"
 ```
 
-Luego, en la instancia, cargar cada archivo en su municipio:
+La salud de la API debe responder `"estado": "ok"`, el dashboard debe devolver `200` y el último comando debe imprimir el mismo JSON. Luego abre `http://<IP_PUBLICA>:8501` en el navegador.
+
+### 6. Actualizar una versión
+
+En la instancia, con el repositorio ya clonado:
 
 ```bash
-for m in cartagena magangue el_carmen_de_bolivar santa_rosa_del_sur turbaco; do
-  curl -F "archivo=@$HOME/$m.csv" http://localhost:8000/api/v1/datos/$m/csv
-done
-```
-
-Verificar con `curl http://localhost:8000/api/v1/datos/estado`: cada municipio debe aparecer con `"cargado": true`.
-
-### 5. Actualizar una versión
-
-Subir la nueva imagen desde tu equipo (paso 1, con un tag nuevo como `0.2`), y en la instancia:
-
-```bash
-docker pull $REGISTRY/dengue-alerta-api:0.2
+cd ~/proyecto-final
+git pull
+docker build -t dengue-alerta-api:0.1 ./src_api
 docker rm -f dengue-api
 docker run -d --name dengue-api --network dengue --restart unless-stopped -p 8000:8000 \
   -e SQLITE_PATH=/app/data/dengue.sqlite -v dengue-data:/app/data \
-  $REGISTRY/dengue-alerta-api:0.2
+  dengue-alerta-api:0.1
 ```
 
-El volumen `dengue-data` conserva los datos cargados entre versiones.
+El dashboard se actualiza igual, con `docker build` y `docker rm -f dengue-dashboard` seguido del `docker run` del paso 3. El volumen `dengue-data` conserva los datos cargados entre versiones.
 
-## Variables de entorno
+## Configuración de variables
+
+Hay dos tipos de configuración.
+
+### Parámetros del análisis (desde el dashboard)
+
+Se cambian en la pestaña **3. Configuración**, sección **Parámetros del análisis**:
+
+| Parámetro | Valor inicial | Qué controla |
+|---|---|---|
+| Umbral de decisión | `0.5` | Probabilidad a partir de la cual hay alerta. Pendiente de validar |
+| Año mínimo de las gráficas | `2012` | Primer año de las gráficas de casos, canal y clima. La predicción usa toda la serie |
+| Ventana de historial | `8` semanas | Historial mínimo para aceptar una fecha de corte |
+
+Ajusta los valores, pulsa **Guardar parámetros** y las pestañas se actualizan. Los valores se guardan en SQLite (tabla `configuracion`), en el volumen `dengue-data`, así que sobreviven a reinicios y actualizaciones. Los cambios aplican a todos los usuarios del dashboard.
+
+No hace falta pasar estos parámetros en los comandos de despliegue. La API también acepta `PUT /api/v1/configuracion` si necesitas cambiarlos desde otro sistema:
+
+```bash
+curl -X PUT http://localhost:8000/api/v1/configuracion \
+  -H "Content-Type: application/json" \
+  -d '{"umbral_decision": 0.3}'
+```
+
+Rangos válidos: umbral entre 0 y 1; año mínimo entre 2007 y 2030; ventana entre 1 y 52 semanas. Un valor fuera de rango responde `422`.
+
+### Variables de entorno (valores iniciales)
+
+Las variables de entorno solo se usan cuando todavía no hay un valor guardado en SQLite. Una vez guardado un parámetro, cambiar la variable no tiene efecto.
 
 | Variable | Por defecto | Descripción |
 |---|---|---|
-| `SQLITE_PATH` | `src_api/data/dengue.sqlite` | Archivo de la base SQLite (se crea al cargar el primer CSV) |
+| `SQLITE_PATH` | `src_api/data/dengue.sqlite` | Archivo de la base SQLite. En Docker se apunta al volumen (`/app/data/dengue.sqlite`) |
 | `MODEL_VERSION` | `logistica-0.1` | Versión reportada en cada respuesta |
-| `HORIZONTE_SEMANAS` | `4` | Semanas de anticipación |
-| `VENTANA_HISTORIAL` | `8` | Semanas de historial mínimo antes de una fecha de corte válida |
-| `UMBRAL_DECISION` | `0.5` | Probabilidad a partir de la cual hay alerta (pendiente de validar) |
-| `ANIO_MINIMO_GRAFICOS` | `2012` | Primer año que devuelve `municipios/{id}/serie` (gráficas del canal endémico y clima). Los años anteriores se omiten; la predicción no se ve afectada |
+| `HORIZONTE_SEMANAS` | `4` | Semanas de anticipación. No cambiarla sin reentrenar el modelo |
+| `UMBRAL_DECISION` | `0.5` | Valor inicial del umbral de decisión |
+| `VENTANA_HISTORIAL` | `8` | Valor inicial de la ventana de historial |
+| `ANIO_MINIMO_GRAFICOS` | `2012` | Valor inicial del año mínimo de las gráficas |
+
+Para restablecer un parámetro al valor inicial, borra la fila correspondiente de la tabla `configuracion` o guárdalo con el valor deseado.
+
+La API no tiene autenticación. Quien pueda llegar al puerto 8000 puede cambiar estos parámetros, así que en un despliegue público conviene no exponerlo.
 
 ## Agregar otro modelo
 
@@ -280,7 +273,21 @@ El volumen `dengue-data` conserva los datos cargados entre versiones.
 2. Construir las variables exactamente como en entrenamiento, usando sólo el historial hasta `fecha_corte` y el umbral de la semana objetivo.
 3. Devolver la clase desde `cargar_predictor()`.
 
+## Métricas del modelo
+
+`GET /api/v1/modelo` devuelve, por municipio, las métricas de la regresión logística en el conjunto de prueba 2023–2025: AUC-ROC (con su intervalo del 95 %), AUC-PR, recall, especificidad, precisión, F1 y el conteo de brotes avisados.
+
+Las métricas vienen de `src_api/metricas/logistica_por_municipio.csv`, copia de las filas `logistica` de `reports/resumen_municipios.csv` que genera el pipeline. Son una copia fija: la API no recalcula nada.
+
+**Actualizar las métricas** después de reentrenar, desde `proyecto-final/`:
+
+```bash
+head -1 reports/resumen_municipios.csv > src_api/metricas/logistica_por_municipio.csv
+grep ",logistica," reports/resumen_municipios.csv >> src_api/metricas/logistica_por_municipio.csv
+```
+
+Luego reconstruir la imagen de la API. Las métricas calculadas con el umbral de Youden del entrenamiento no son las mismas que las que daría el umbral de decisión de la API (`UMBRAL_DECISION`).
+
 ## Pendientes
 
-- Métricas de evaluación por municipio (recall, especificidad, precisión, F1 y AUC-ROC).
-- Umbral de decisión validado con el equipo.
+- **Umbral de decisión:** el valor inicial es `0.5` y se ajusta desde Configuración. Falta que el equipo lo valide. El umbral de Youden del entrenamiento no está guardado en el paquete del modelo, así que la API no puede usarlo todavía.

@@ -18,6 +18,103 @@ urbana.
 - **Reproducible:** todo el pipeline corre con [DVC](https://dvc.org). Los datos y modelos están en
   [DagsHub](https://dagshub.com/w-bojacag/proyecto-final).
 
+## Aplicación desplegada
+
+| Recurso | Enlace |
+|---|---|
+| Dashboard (interfaz para el usuario final) | http://52.22.197.228:8501 |
+| Repositorio | https://github.com/w-bojacag/proyecto-final |
+| Datos y modelos versionados (DVC) | https://dagshub.com/w-bojacag/proyecto-final |
+| Ejemplo de inferencia sin API | [notebooks/ejemplo_inferencia.ipynb](notebooks/ejemplo_inferencia.ipynb) |
+
+- **Dónde corre:** una instancia AWS EC2 (t3.small, Ubuntu, región us-east-1) con dos contenedores
+  Docker: la API FastAPI y el dashboard Streamlit. Los pasos están en
+  [src_api/README.md](src_api/README.md#despliegue-en-aws-ec2).
+- **Credenciales:** el dashboard no requiere usuario ni contraseña. La API (puerto 8000) no se
+  expone a internet: no tiene autenticación y permite cambiar parámetros, así que solo el dashboard
+  la llama, dentro de la red interna de Docker. Su documentación interactiva (`/docs`) se consulta
+  al ejecutarla en local.
+- **Disponibilidad:** la instancia se enciende en el horario de evaluación acordado. La IP es
+  elástica, así que el enlace no cambia al reiniciarla.
+
+### Uso del dashboard
+
+1. **1. Mapa de alertas:** elige una fecha de corte (última semana con datos conocidos) y pulsa
+   *Proyectar 4 semanas*. Cada municipio muestra la probabilidad de superar el canal endémico 4
+   semanas después, los casos y el umbral del canal en la fecha de corte. Rojo parpadeante = alerta.
+   El botón *Ver* abre las variables que más influyeron en la predicción.
+2. **2. Casos y canal endémico:** casos semanales frente al límite del canal, con los tramos de
+   exceso sombreados; debajo, lluvia y temperatura.
+3. **3. Configuración:** umbral de decisión, año mínimo de las gráficas, ventana de historial y
+   carga de los `caracteristicas.csv` por municipio.
+4. **4. Detalle del modelo:** nombre, versión, variables y métricas de cada municipio en la prueba
+   2023–2025.
+5. **5. Acerca de:** descripción del proyecto y del equipo.
+
+Detalle de cada pestaña en [src_dashboard/README.md](src_dashboard/README.md#pestañas).
+
+### Ejemplo de entrada y salida
+
+Entrada (la que envía el dashboard al pulsar *Proyectar 4 semanas*, o con `POST /api/v1/prediccion`):
+
+```json
+{"municipio_id": "cartagena", "fecha_corte": "2025-11-02"}
+```
+
+Salida:
+
+```json
+{
+  "municipio_id": "cartagena",
+  "municipio": "Cartagena",
+  "fecha_corte": "2025-11-02",
+  "semana_objetivo": "2025-11-30",
+  "horizonte_semanas": 4,
+  "probabilidad_exceso": 0.0534,
+  "alerta": false,
+  "umbral_decision": 0.5,
+  "umbral_canal_objetivo": 411.11,
+  "exceso_observado": false,
+  "variables_influyentes": [
+    {"variable": "ratio_casos_umbral_objetivo", "aporte": -0.9},
+    {"variable": "ratio_roll4_umbral_objetivo", "aporte": 0.229},
+    {"variable": "exceso_actual", "aporte": -0.198}
+  ],
+  "modelo": "Regresión logística",
+  "version_modelo": "logistica-0.1"
+}
+```
+
+Lectura: con 138 casos en la semana del 2 de noviembre de 2025 (límite del canal: 345), la
+probabilidad de que Cartagena supere el canal el 30 de noviembre es del 5 %, por debajo del umbral
+de decisión, así que no hay alerta. `aporte` es la contribución de cada variable en escala logit
+(negativa = baja el riesgo). `exceso_observado` solo existe para fechas pasadas y sirve para comparar.
+
+### Consideraciones del modelo y del despliegue
+
+| Aspecto | Valor |
+|---|---|
+| Modelo | Regresión logística (scikit-learn 1.9.1), un modelo por municipio, 3 variables |
+| Tamaño | 2,2 KB por municipio; el paquete `.whl` con los 5 modelos pesa 9 KB |
+| Hardware | Solo CPU, sin GPU. En producción: t3.small (2 vCPU, 2 GB de RAM) |
+| Memoria de la API | Unos 175 MB con los 5 modelos cargados (casi todo es pandas y scikit-learn) |
+| Tiempo de inferencia | Entre 30 y 100 ms por consulta en la API, incluida la lectura de SQLite (medido en local, sin red) |
+| Datos en la API | SQLite en un volumen Docker; unos 0,4 MB con los 5 municipios (831 semanas cada uno) |
+
+**Estrategia de despliegue.** El modelo se distribuye como paquete de Python (`.whl`) que se instala
+en la imagen de la API, así que viaja con el código y no hay que descargarlo aparte. Por su tamaño
+no hacen falta carga diferida, cuantización ni servicios externos de inferencia. Aun así, cada modelo
+se carga la primera vez que se consulta su municipio y queda en memoria. Se eligió la logística
+sobre XGBoost y LSTM porque discrimina igual o mejor en prueba (ver
+[Resultados vigentes](#resultados-vigentes)) con una fracción del costo, y sus coeficientes permiten
+explicar cada alerta.
+
+**Escalabilidad.** Cada predicción es un cálculo de 3 variables y un producto escalar, así que el
+límite práctico es el servidor web, no el modelo. La API no guarda estado entre solicitudes (los
+datos están en SQLite), de modo que se puede replicar detrás de un balanceador; para varias
+réplicas habría que cambiar SQLite por una base compartida (por ejemplo, PostgreSQL). Agregar un
+municipio implica entrenar su modelo con el pipeline, empaquetarlo y cargar su CSV.
+
 ## Resultados vigentes
 
 Regresión logística, prueba 2023–2025. Cada año se predice con un modelo entrenado solo con los
@@ -266,6 +363,8 @@ data/
   processed/                SIVIGILA unificado y series del EDA (DVC)
   processed/municipios/<m>/ clima, cruce semanal y matriz de características (DVC)
 models/<m>/                 modelos finales y modelos por año del walk-forward (DVC)
+models/paquete_modelo/      paquete del modelo desplegado (código y los 5 .joblib, en git)
+notebooks/                  ejemplo de inferencia con el paquete del modelo
 reports/
   figures/                  figuras del EDA
   municipios/<m>/           predicciones, métricas, coeficientes y evaluación
@@ -275,9 +374,8 @@ src/
   geo/                      polígonos del MGN
   features/                 construcción de la matriz de características
   models/                   entrenamiento, evaluación y utilidades comunes (comun.py)
-src_api/
-
-src_dashboard/
+src_api/                    API FastAPI: endpoints, SQLite y paquete del modelo (model_pkg/)
+src_dashboard/              dashboard Streamlit que consume la API
 
 ```
 

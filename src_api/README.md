@@ -25,7 +25,14 @@ Ejemplo de predicción:
 
 ```json
 POST /api/v1/prediccion
-{"municipio_id": "cartagena", "fecha_corte": "2024-06-02"}
+{"municipio_id": "cartagena", "fecha_corte": "2025-11-02"}
+```
+
+Respuesta (resumida; la completa está en el [README principal](../README.md#ejemplo-de-entrada-y-salida)):
+
+```json
+{"municipio": "Cartagena", "semana_objetivo": "2025-11-30", "probabilidad_exceso": 0.0534,
+ "alerta": false, "umbral_decision": 0.5, "umbral_canal_objetivo": 411.11, "exceso_observado": false}
 ```
 
 ## Carga de datos
@@ -145,8 +152,22 @@ Antes de empezar, en tu equipo:
 
 ### 1. Preparar la instancia
 
-- Sistema operativo: Amazon Linux 2023.
+- Sistema operativo: Ubuntu (el despliegue actual) o Amazon Linux 2023. Tipo t3.small (2 GB de RAM) y disco de 20 GB: con los 8 GB por defecto no alcanza para construir las imágenes.
 - Grupo de seguridad: SSH (22) solo desde tu IP; dashboard (8501) desde donde lo vayan a usar. La API (8000) no necesita ser pública: el dashboard la llama desde dentro de la red de Docker.
+- Opcional: asociar una IP elástica (EC2 → Direcciones IP elásticas) para que la dirección no cambie al detener e iniciar la instancia.
+
+Ubuntu (usuario `ubuntu`):
+
+```bash
+ssh -i tu-clave.pem ubuntu@<IP_PUBLICA>
+
+sudo apt update
+sudo apt install -y docker.io git
+sudo systemctl enable --now docker
+sudo usermod -aG docker ubuntu        # cerrar la sesión SSH y volver a entrar
+```
+
+Amazon Linux 2023 (usuario `ec2-user`):
 
 ```bash
 ssh -i tu-clave.pem ec2-user@<IP_PUBLICA>
@@ -155,6 +176,10 @@ sudo dnf install -y docker git
 sudo systemctl enable --now docker
 sudo usermod -aG docker ec2-user      # cerrar la sesión SSH y volver a entrar
 ```
+
+En Windows, si `ssh` rechaza la clave por permisos demasiado abiertos: `icacls tu-clave.pem /inheritance:r /grant:r "$($env:USERNAME):(R)"` en PowerShell.
+
+Desde el paso 2 los comandos son iguales en ambos sistemas. Gracias a `--restart unless-stopped` y a que Docker arranca con el sistema, al detener e iniciar la instancia los contenedores vuelven solos y los datos cargados se conservan en el volumen.
 
 Si no quieres usar el grupo `docker`, antepón `sudo` a todos los comandos de `docker` de esta sección. Usa siempre la misma forma en todos los pasos.
 
